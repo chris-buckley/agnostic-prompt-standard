@@ -1,0 +1,15 @@
+# Node
+node_modules/
+packages/aps-cli-node/payload/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+packages/aps-cli-py/src/aps_cli/payload/agnostic-prompt-standard/
+
+# Tooling
+.DS_Store

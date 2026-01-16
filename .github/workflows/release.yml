@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Version consistency (tag must match)
+        run: python tools/check_versions.py --tag "${{ github.ref_name }}"
+      - name: Skill link integrity
+        run: python tools/check_skill_links.py
+
+  publish_node:
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Install deps
+        working-directory: packages/aps-cli-node
+        run: npm install
+      - name: Test
+        working-directory: packages/aps-cli-node
+        run: npm test
+      - name: Publish to npm (token)
+        if: env.NPM_TOKEN != ''
+        working-directory: packages/aps-cli-node
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
+        run: npm publish --access public --provenance
+      - name: Publish to npm (trusted publishing / OIDC)
+        if: env.NPM_TOKEN == ''
+        working-directory: packages/aps-cli-node
+        run: npm publish --access public
+
+  publish_python:
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build distributions
+        run: |
+          python -m pip install -U pip build
+          python tools/sync_payload.py --python
+          python -m build --outdir packages/aps-cli-py/dist packages/aps-cli-py
+      - name: Publish to PyPI (token)
+        if: env.PYPI_API_TOKEN != ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ env.PYPI_API_TOKEN }}
+          packages-dir: packages/aps-cli-py/dist
+      - name: Publish to PyPI (trusted publishing / OIDC)
+        if: env.PYPI_API_TOKEN == ''
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/aps-cli-py/dist
+
+  github_release:
+    needs: [publish_node, publish_python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create skill zip
+        run: |
+          mkdir -p dist
+          cd skill
+          zip -r "../dist/agnostic-prompt-standard-skill-${{ github.ref_name }}.zip" agnostic-prompt-standard
+      - name: Create GitHub Release (attach skill zip)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/agnostic-prompt-standard-skill-${{ github.ref_name }}.zip

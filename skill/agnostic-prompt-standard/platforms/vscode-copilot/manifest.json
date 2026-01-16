@@ -1,0 +1,40 @@
+{
+  "platformId": "vscode-copilot",
+  "displayName": "VS Code + GitHub Copilot",
+  "adapterVersion": "1.0.0",
+  "lastUpdated": "2026-01-15",
+  "docs": {
+    "agentSkills": "https://code.visualstudio.com/docs/copilot/customization/agent-skills",
+    "promptFiles": "https://code.visualstudio.com/docs/copilot/customization/prompt-files",
+    "customAgents": "https://code.visualstudio.com/docs/copilot/customization/custom-agents",
+    "toolsInChat": "https://code.visualstudio.com/docs/copilot/chat/chat-tools",
+    "toolsReference": "https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features",
+    "customInstructions": "https://code.visualstudio.com/docs/copilot/customization/custom-instructions"
+  },
+  "fileConventions": {
+    "skills": [
+      ".github/skills/<skill-id>/SKILL.md",
+      "~/.copilot/skills/<skill-id>/SKILL.md",
+      ".claude/skills/<skill-id>/SKILL.md (legacy)",
+      "~/.claude/skills/<skill-id>/SKILL.md (legacy)"
+    ],
+    "agents": [
+      ".github/agents/*.agent.md"
+    ],
+    "prompts": [
+      ".github/prompts/*.prompt.md"
+    ],
+    "instructions": [
+      ".github/copilot-instructions.md",
+      ".github/instructions/*.instructions.md",
+      "AGENTS.md (root, optional nested via setting)",
+      "CLAUDE.md / GEMINI.md (GitHub ecosystem alternates)"
+    ]
+  },
+  "toolNaming": {
+    "chatMentions": "Tools are mentioned in chat with # (e.g. #codebase).",
+    "frontmatterTools": "Prompt/agent YAML frontmatter uses tool names (no leading #).",
+    "qualification": "Newer VS Code versions may require fully-qualified tool names (example: search/codebase). Always prefer the name displayed in the VS Code tools picker."
+  },
+  "notes": "This adapter documents VS Code Copilot-specific frontmatter and tool naming so APS prompts can be generated reproducibly."
+}

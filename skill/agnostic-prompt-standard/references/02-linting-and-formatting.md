@@ -1,0 +1,122 @@
+# 02 Linting and formatting
+
+This document defines the **compile-time and lint-time** formatting rules.
+
+## Newlines and XML-like tags
+
+Newline rule (normative):
+
+- There MUST be exactly one newline after an opening XML-like tag.
+- There MUST be exactly one newline before a closing XML-like tag.
+
+This applies to top-level sections (`<instructions>`, `<constants>`, `<formats>`, `<runtime>`,
+`<triggers>`, `<processes>`, `<input>`) and to nested tags like `<format>` and `<process>`.
+
+## Tabs and whitespace
+
+- Tab characters (`\t`) are forbidden anywhere in a prompt. Tabs MUST raise `AG-011`.
+- Engines MUST treat excessive inter-token padding whitespace as a compile error (`AG-031`) when
+  compiled/normalized form requires exactly one ASCII space.
+
+## Comments
+
+Comments are denoted by `//` at the start of the line and are for explanatory purposes only.
+
+### Comment stripping
+
+If an engine implements comment stripping, it MUST:
+
+- Remove any full line whose first two non-whitespace characters are `//`.
+- NOT strip comments inside block constant bodies (see below).
+
+### Where comments are forbidden
+
+- Comments are forbidden inside **executable blocks**: `<triggers>` and `<processes>` (including
+  inside each `<process>` body). A detected comment in an executable block MUST raise `AG-010`.
+
+## Unicode and quotes
+
+- Prompts MUST be NFC normalized.
+- Strings MUST use ASCII double quotes (`"`) only. Smart quotes are forbidden.
+
+## Canonical JSON spacing
+
+Engines that compile or canonicalize JSON MUST emit **canonical JSON** using the rules below:
+
+- After `:`, exactly one ASCII space.
+- After `,`, exactly one ASCII space.
+- No interior spaces immediately inside `{` `}` `[` `]`.
+  - Empty containers are `{}` and `[]`.
+- Keys in objects MUST be in lexicographic order.
+
+Source form inside JSON block constants MAY contain arbitrary newlines/indentation, but engines
+MUST parse and re-emit canonical JSON at compile time.
+
+## `where:` key ordering
+
+In `where:` parameter lists, keys MUST appear in lexicographic order. Violation → `AG-012`.
+
+## Backticked ids
+
+Process and tool ids in statements MUST be wrapped in backticks.
+
+Examples:
+
+- `RUN \`process_id\``
+- `USE \`tool_name\``
+
+Violation → `AG-003` (InvalidId).
+
+## Constants inside JSON values
+
+An `UpperSym` appearing inside JSON objects/arrays denotes a **constant symbol reference**.
+Engines MUST resolve it from `<constants>` before execution or raise `AG-006`.
+
+## Block constants
+
+Block constants are allowed only inside `<constants>` (see **00 Structure**).
+
+Rules:
+
+- Block constant opening line MUST be `SYMBOL: JSON<<` or `SYMBOL: TEXT<<` (exactly one ASCII space
+  after `:`).
+- Block constant BODY is line-oriented and terminates at the first line whose content is exactly
+  `>>` starting at column 1.
+- Comment stripping (`//`) MUST NOT apply inside block constant BODY.
+- Unknown `<BLOCK_TYPE>` → `AG-046`.
+- Missing closing delimiter `>>` → `AG-045`.
+
+## Format blocks
+
+Rendered format outputs MUST be wrapped in a fenced code block whose info string is exactly
+`format:<ID>` where `<ID>` matches a defined `<format id="...">`.
+
+Rules:
+
+- The fence MUST start at column 1.
+- For any step that requires a format, the agent MUST emit exactly one `format:<ID>` fenced block.
+  Multiple blocks or surrounding prose → `AG-040`.
+
+### WHERE discipline (format contracts)
+
+Every rendered format block MUST include a terminating `WHERE:` section.
+
+Each `<PLACEHOLDER>` token that appears in the body MUST have exactly one definition line in
+`WHERE:`. No extra definitions are allowed.
+
+- Missing/extra/mismatched definitions → `AG-041` / `AG-042`.
+- Placeholders MUST be `<UPPER_SNAKE>`; any other style → `AG-043`.
+
+## RETURN values
+
+`RETURN` supports:
+
+- Symbol lists
+- `key=value` pairs
+- Artifact references of the form:
+
+```json
+{"$artifact":"SYMBOL","hash":"sha256:..."}
+```
+
+See **03 Agentic control** and **05 Grammar** for executable syntax.

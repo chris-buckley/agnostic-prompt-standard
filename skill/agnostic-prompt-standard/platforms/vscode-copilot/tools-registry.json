@@ -1,0 +1,509 @@
+{
+  "platformId": "vscode-copilot",
+  "adapterVersion": "1.1.0",
+  "lastUpdated": "2026-01-15",
+  "toolNaming": {
+    "chatMentions": "Tools are mentioned in chat with # (for example: #codebase, #problems).",
+    "frontmatterTools": "In YAML frontmatter (tools: [...]), list tool names without #. Some names are qualified (for example: search/codebase, read/problems, web/fetch).",
+    "rule": "Prefer the exact tool name shown by VS Code's tools picker. If diagnostics report a rename, update your frontmatter to the new name."
+  },
+  "toolSets": [
+    {
+      "id": "search",
+      "mention": "#search",
+      "preferredName": "search",
+      "legacyName": "search",
+      "description": "Tool set: searching the workspace (codebase, changes, usages, text/file search).",
+      "tools": [
+        "search/codebase",
+        "search/fileSearch",
+        "search/textSearch",
+        "search/searchResults",
+        "search/changes",
+        "search/usages"
+      ]
+    },
+    {
+      "id": "read",
+      "mention": "#read",
+      "preferredName": "read",
+      "legacyName": null,
+      "description": "Tool set: reading workspace context (files, problems, terminal selection).",
+      "tools": [
+        "read/readFile",
+        "selection",
+        "read/problems",
+        "read/terminalLastCommand",
+        "read/terminalSelection"
+      ]
+    },
+    {
+      "id": "edit",
+      "mention": "#edit",
+      "preferredName": "edit",
+      "legacyName": "edit",
+      "description": "Tool set: editing and creating files in the workspace.",
+      "tools": [
+        "edit/createDirectory",
+        "edit/createFile",
+        "edit/editFiles",
+        "edit/editNotebook"
+      ]
+    },
+    {
+      "id": "execute",
+      "mention": "#execute",
+      "preferredName": "execute",
+      "legacyName": null,
+      "description": "Tool set: running commands and tasks (terminal + tasks output).",
+      "tools": [
+        "execute/runInTerminal",
+        "execute/getTerminalOutput",
+        "execute/runTask",
+        "execute/createAndRunTask",
+        "execute/getTaskOutput"
+      ]
+    },
+    {
+      "id": "web",
+      "mention": "#web",
+      "preferredName": "web",
+      "legacyName": null,
+      "description": "Tool set: fetching external information.",
+      "tools": [
+        "web/fetch",
+        "githubRepo"
+      ]
+    },
+    {
+      "id": "vscode",
+      "mention": "#vscode",
+      "preferredName": "vscode",
+      "legacyName": null,
+      "description": "Tool set: VS Code IDE helpers (commands, extensions, setup info).",
+      "tools": [
+        "vscode/runCommand",
+        "vscode/extensions",
+        "vscode/installExtension",
+        "vscode/getProjectSetupInfo",
+        "vscode/openSimpleBrowser",
+        "vscode/newWorkspace",
+        "vscode/vscodeAPI"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "search/codebase",
+      "mention": "#codebase",
+      "preferredName": "search/codebase",
+      "legacyName": "codebase",
+      "description": "Search the current workspace to automatically find relevant context for the chat prompt.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.codebase"
+      ],
+      "notes": "Commonly used in prompt files (tools: ['search/codebase'])."
+    },
+    {
+      "id": "search/changes",
+      "mention": "#changes",
+      "preferredName": "search/changes",
+      "legacyName": "changes",
+      "description": "List and query source control changes.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "scm.diff"
+      ],
+      "notes": "VS Code diagnostics may recommend 'search/changes' over 'changes'."
+    },
+    {
+      "id": "search/usages",
+      "mention": "#usages",
+      "preferredName": "search/usages",
+      "legacyName": "usages",
+      "description": "Find references / implementations / definitions for symbols.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "code.usages"
+      ],
+      "notes": "VS Code diagnostics may recommend 'search/usages' over 'usages'."
+    },
+    {
+      "id": "search/fileSearch",
+      "mention": "#fileSearch",
+      "preferredName": "search/fileSearch",
+      "legacyName": "fileSearch",
+      "description": "Search for files in the workspace using glob patterns and return their paths.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.files"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "search/textSearch",
+      "mention": "#textSearch",
+      "preferredName": "search/textSearch",
+      "legacyName": "textSearch",
+      "description": "Find text in files.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.text"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "search/searchResults",
+      "mention": "#searchResults",
+      "preferredName": "search/searchResults",
+      "legacyName": "searchResults",
+      "description": "Read results from the Search view.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.results"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "read/problems",
+      "mention": "#problems",
+      "preferredName": "read/problems",
+      "legacyName": "problems",
+      "description": "Add workspace issues and problems from the Problems panel as context.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "diagnostics.read"
+      ],
+      "notes": "VS Code diagnostics may recommend 'read/problems' over 'problems'."
+    },
+    {
+      "id": "read/readFile",
+      "mention": "#readFile",
+      "preferredName": "read/readFile",
+      "legacyName": "readFile",
+      "description": "Read the content of a file in the workspace.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "fs.read"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "selection",
+      "mention": "#selection",
+      "preferredName": "selection",
+      "legacyName": "selection",
+      "description": "Get the current editor selection (only available when text is selected).",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "editor.selection"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "read/terminalLastCommand",
+      "mention": "#terminalLastCommand",
+      "preferredName": "read/terminalLastCommand",
+      "legacyName": "terminalLastCommand",
+      "description": "Get the last run terminal command and its output.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "terminal.last"
+      ],
+      "notes": "VS Code diagnostics may recommend 'read/terminalLastCommand'."
+    },
+    {
+      "id": "read/terminalSelection",
+      "mention": "#terminalSelection",
+      "preferredName": "read/terminalSelection",
+      "legacyName": "terminalSelection",
+      "description": "Get the current terminal selection.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "terminal.selection"
+      ],
+      "notes": "VS Code diagnostics may recommend 'read/terminalSelection'."
+    },
+    {
+      "id": "edit/createDirectory",
+      "mention": "#createDirectory",
+      "preferredName": "edit/createDirectory",
+      "legacyName": "createDirectory",
+      "description": "Create a new directory in the workspace.",
+      "risk": "medium",
+      "sideEffects": "writes",
+      "capabilities": [
+        "fs.mkdir"
+      ],
+      "notes": "May require manual approval depending on VS Code settings."
+    },
+    {
+      "id": "edit/createFile",
+      "mention": "#createFile",
+      "preferredName": "edit/createFile",
+      "legacyName": "createFile",
+      "description": "Create a new file in the workspace.",
+      "risk": "medium",
+      "sideEffects": "writes",
+      "capabilities": [
+        "fs.write"
+      ],
+      "notes": "May require manual approval depending on VS Code settings."
+    },
+    {
+      "id": "edit/editFiles",
+      "mention": "#editFiles",
+      "preferredName": "edit/editFiles",
+      "legacyName": "editFiles",
+      "description": "Apply edits to files in the workspace.",
+      "risk": "high",
+      "sideEffects": "writes",
+      "capabilities": [
+        "fs.patch"
+      ],
+      "notes": "May require manual approval depending on VS Code settings."
+    },
+    {
+      "id": "edit/editNotebook",
+      "mention": "#editNotebook",
+      "preferredName": "edit/editNotebook",
+      "legacyName": "editNotebook",
+      "description": "Make edits to a notebook.",
+      "risk": "high",
+      "sideEffects": "writes",
+      "capabilities": [
+        "notebook.patch"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "execute/runInTerminal",
+      "mention": "#runInTerminal",
+      "preferredName": "execute/runInTerminal",
+      "legacyName": "runInTerminal",
+      "description": "Run a shell command in the integrated terminal.",
+      "risk": "high",
+      "sideEffects": "executes",
+      "capabilities": [
+        "terminal.exec"
+      ],
+      "notes": "VS Code diagnostics may recommend 'execute/runInTerminal'."
+    },
+    {
+      "id": "execute/getTerminalOutput",
+      "mention": "#getTerminalOutput",
+      "preferredName": "execute/getTerminalOutput",
+      "legacyName": "getTerminalOutput",
+      "description": "Get the output from running a terminal command.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "terminal.output"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "execute/runTask",
+      "mention": "#runTask",
+      "preferredName": "execute/runTask",
+      "legacyName": "runTask",
+      "description": "Run an existing task in the workspace.",
+      "risk": "high",
+      "sideEffects": "executes",
+      "capabilities": [
+        "tasks.run"
+      ],
+      "notes": "VS Code diagnostics may recommend 'execute/runTask'."
+    },
+    {
+      "id": "execute/createAndRunTask",
+      "mention": "#createAndRunTask",
+      "preferredName": "execute/createAndRunTask",
+      "legacyName": "createAndRunTask",
+      "description": "Create and run a new task in the workspace.",
+      "risk": "medium",
+      "sideEffects": "executes",
+      "capabilities": [
+        "tasks.create",
+        "tasks.run"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "execute/getTaskOutput",
+      "mention": "#getTaskOutput",
+      "preferredName": "execute/getTaskOutput",
+      "legacyName": "getTaskOutput",
+      "description": "Get the output from running a task.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "tasks.output"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "web/fetch",
+      "mention": "#fetch",
+      "preferredName": "web/fetch",
+      "legacyName": "fetch",
+      "description": "Fetch the content from a given web page.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "capabilities": [
+        "web.fetch"
+      ],
+      "notes": "Subject to URL approval in VS Code. VS Code diagnostics may recommend 'web/fetch'."
+    },
+    {
+      "id": "githubRepo",
+      "mention": "#githubRepo",
+      "preferredName": "githubRepo",
+      "legacyName": "githubRepo",
+      "description": "Perform a code search in a GitHub repository.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "capabilities": [
+        "github.search"
+      ],
+      "notes": "Requires repo argument (e.g. microsoft/vscode)."
+    },
+    {
+      "id": "todo",
+      "mention": "#todo",
+      "preferredName": "todo",
+      "legacyName": "todos",
+      "description": "Track implementation and progress of a request with a TODO list.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "planning.todos"
+      ],
+      "notes": "VS Code diagnostics may recommend 'todo' over 'todos'."
+    },
+    {
+      "id": "vscode/runCommand",
+      "mention": "#runVscodeCommand",
+      "preferredName": "vscode/runCommand",
+      "legacyName": "runVscodeCommand",
+      "description": "Run a VS Code command.",
+      "risk": "high",
+      "sideEffects": "mixed",
+      "capabilities": [
+        "vscode.command"
+      ],
+      "notes": "Can change UI/settings; review the command."
+    },
+    {
+      "id": "vscode/extensions",
+      "mention": "#extensions",
+      "preferredName": "vscode/extensions",
+      "legacyName": "extensions",
+      "description": "Search for and ask about VS Code extensions.",
+      "risk": "low",
+      "sideEffects": "network",
+      "capabilities": [
+        "extensions.search"
+      ],
+      "notes": "May contact marketplace/online sources."
+    },
+    {
+      "id": "vscode/installExtension",
+      "mention": "#installExtension",
+      "preferredName": "vscode/installExtension",
+      "legacyName": "installExtension",
+      "description": "Install a VS Code extension.",
+      "risk": "high",
+      "sideEffects": "writes",
+      "capabilities": [
+        "extensions.install"
+      ],
+      "notes": "Installs software into the IDE; approval recommended."
+    },
+    {
+      "id": "vscode/getProjectSetupInfo",
+      "mention": "#getProjectSetupInfo",
+      "preferredName": "vscode/getProjectSetupInfo",
+      "legacyName": "getProjectSetupInfo",
+      "description": "Provide instructions and configuration for scaffolding different types of projects.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "project.scaffold.info"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "vscode/openSimpleBrowser",
+      "mention": "#openSimpleBrowser",
+      "preferredName": "vscode/openSimpleBrowser",
+      "legacyName": "openSimpleBrowser",
+      "description": "Open the built-in Simple Browser and preview a locally-deployed web app.",
+      "risk": "medium",
+      "sideEffects": "none",
+      "capabilities": [
+        "ui.browser"
+      ],
+      "notes": ""
+    },
+    {
+      "id": "vscode/newWorkspace",
+      "mention": "#newWorkspace",
+      "preferredName": "vscode/newWorkspace",
+      "legacyName": "newWorkspace",
+      "description": "Create a new workspace.",
+      "risk": "high",
+      "sideEffects": "writes",
+      "capabilities": [
+        "workspace.create"
+      ],
+      "notes": "Creates files; review results."
+    },
+    {
+      "id": "vscode/vscodeAPI",
+      "mention": "#VSCodeAPI",
+      "preferredName": "vscode/vscodeAPI",
+      "legacyName": "VSCodeAPI",
+      "description": "Ask about VS Code functionality and extension development.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "docs.vscode"
+      ],
+      "notes": ""
+    }
+  ],
+  "recommended": {
+    "aps": {
+      "planner": [
+        "search",
+        "read/problems",
+        "search/changes",
+        "search/usages",
+        "todo",
+        "web/fetch"
+      ],
+      "implementer": [
+        "search",
+        "read",
+        "edit",
+        "execute",
+        "read/problems",
+        "todo",
+        "web/fetch"
+      ]
+    }
+  }
+}

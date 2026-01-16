@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agnostic-prompt-standard.dev/schemas/tools-registry.schema.json",
+  "title": "APS Platform Tool Registry",
+  "type": "object",
+  "required": [
+    "platformId",
+    "adapterVersion",
+    "tools"
+  ],
+  "properties": {
+    "platformId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapterVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lastUpdated": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toolNaming": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "toolSets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mention",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mention": {
+            "type": "string"
+          },
+          "preferredName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "legacyName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mention",
+          "description",
+          "risk",
+          "sideEffects"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mention": {
+            "type": "string"
+          },
+          "preferredName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "legacyName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "sideEffects": {
+            "type": "string",
+            "enum": [
+              "none",
+              "reads",
+              "writes",
+              "executes",
+              "network",
+              "mixed"
+            ]
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "recommended": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

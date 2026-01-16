@@ -1,0 +1,25 @@
+{
+  "platformId": "your-platform-id",
+  "displayName": "Your Platform",
+  "adapterVersion": "0.1.0",
+  "lastUpdated": "YYYY-MM-DD",
+  "docs": {
+    "home": "https://example.com/docs"
+  },
+  "fileConventions": {
+    "skills": [
+      ".github/skills/<skill>/SKILL.md"
+    ],
+    "agents": [
+      ".github/agents/*.agent.md"
+    ],
+    "prompts": [
+      ".github/prompts/*.prompt.md"
+    ],
+    "instructions": [
+      ".github/copilot-instructions.md",
+      "AGENTS.md"
+    ]
+  },
+  "notes": "Describe platform-specific constraints here."
+}

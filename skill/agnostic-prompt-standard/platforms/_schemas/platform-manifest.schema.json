@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agnostic-prompt-standard.dev/schemas/platform-manifest.schema.json",
+  "title": "APS Platform Adapter Manifest",
+  "type": "object",
+  "required": [
+    "platformId",
+    "displayName",
+    "adapterVersion",
+    "fileConventions"
+  ],
+  "properties": {
+    "platformId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "adapterVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lastUpdated": {
+      "type": "string",
+      "minLength": 1
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "fileConventions": {
+      "type": "object",
+      "required": [
+        "skills",
+        "agents",
+        "prompts",
+        "instructions"
+      ],
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "agents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prompts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "frontmatter": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "toolNaming": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

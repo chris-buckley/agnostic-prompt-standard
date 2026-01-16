@@ -1,0 +1,12 @@
+{
+  "platformId": "your-platform-id",
+  "adapterVersion": "0.1.0",
+  "lastUpdated": "YYYY-MM-DD",
+  "toolNaming": {
+    "mentions": "#tool",
+    "frontmatter": "tool-name"
+  },
+  "toolSets": [],
+  "tools": [],
+  "recommended": {}
+}

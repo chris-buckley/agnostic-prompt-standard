@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agnostic-prompt-aps"
+version = "1.1.1"
+description = "CLI to install and manage the Agnostic Prompt Standard (APS) skill and platform templates."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Agnostic Prompt Standard contributors" }
+]
+dependencies = [
+  "typer>=0.12.0",
+  "rich>=13.0.0",
+  "questionary>=2.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "build>=1.0.0"
+]
+
+[project.scripts]
+aps = "aps_cli.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/<OWNER>/<REPO>"
+Repository = "https://github.com/<OWNER>/<REPO>.git"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["aps_cli"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+aps_cli = ["payload/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
