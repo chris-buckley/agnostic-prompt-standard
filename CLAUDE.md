@@ -65,3 +65,39 @@ Default paths for installed skills:
 - Project: `.github/skills/agnostic-prompt-standard/`
 - Personal: `~/.copilot/skills/agnostic-prompt-standard/`
 - Claude (with `--claude`): `.claude/skills/` instead
+
+## Testing
+
+### Run all tests
+```bash
+# Node CLI
+node --test packages/aps-cli-node/test/*.test.js
+
+# Python CLI
+cd packages/aps-cli-py && pytest -q tests
+```
+
+### Manual CLI verification
+```bash
+# Node CLI
+node packages/aps-cli-node/bin/aps.js doctor
+node packages/aps-cli-node/bin/aps.js init --claude --dry-run --yes
+
+# Python CLI (from packages/aps-cli-py/)
+python -c "import sys; sys.argv = ['aps', 'doctor']; from aps_cli.cli import app; app()"
+```
+
+### Linting
+```bash
+node packages/aps-cli-node/scripts/lint.js
+```
+
+## Key Files
+
+When modifying CLI behavior:
+- **Node**: `packages/aps-cli-node/src/core.js` (path logic), `src/cli.js` (commands)
+- **Python**: `packages/aps-cli-py/src/aps_cli/core.py` (path logic), `cli.py` (commands)
+
+When modifying the skill/spec:
+- `skill/agnostic-prompt-standard/references/*.md` — normative spec documents
+- `skill/agnostic-prompt-standard/SKILL.md` — skill metadata and version
