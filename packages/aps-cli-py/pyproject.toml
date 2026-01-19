@@ -28,8 +28,8 @@ dev = [
 aps = "aps_cli.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/<OWNER>/<REPO>"
-Repository = "https://github.com/<OWNER>/<REPO>.git"
+Homepage = "https://github.com/chris-buckley/agnostic-prompt-standard"
+Repository = "https://github.com/chris-buckley/agnostic-prompt-standard.git"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

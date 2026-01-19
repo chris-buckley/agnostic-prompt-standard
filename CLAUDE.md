@@ -1,30 +1,106 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## About this codebase
 
-## Project Overview
+This repository contains the Agnostic Prompt Standard (APS), a framework for describing systems.
+The primary use case is agentic AI prompts, but APS is designed as a general system description standard.
+This enables AI systems to understand and reason about other systems—including themselves.
+The result is modular, generalizable AI systems that remain useful as capabilities advance.
+APS is designed for both humans and agents to read, write, and reason about systems.
+The standard is intentionally model-agnostic. While no single prompt format works perfectly for every model, APS focuses on patterns that generalize as AI capabilities converge.
 
-Agnostic Prompt Standard (APS) is a reference framework for generating, compiling, and linting prompts. The repository contains three main components:
+The standard lives here: `./skill/agnostic-prompt-standard`.
+It is packaged as a "skill" an emerging format for AI-consumable specifications.
 
-- `skill/agnostic-prompt-standard/` — The APS skill (prompt protocol spec)
-- `packages/aps-cli-node/` — Node.js CLI (`npx @agnostic-prompt/aps`)
-- `packages/aps-cli-py/` — Python CLI (`pipx run agnostic-prompt-aps`)
+## Skill Structure
 
-## Commands
+APS separates concerns into:
+(1) the core specification (`references/`),
+(2) reusable templates and examples (`assets/`), and
+(3) platform-specific adapters (`platforms/`).
+
+The core abstraction is a structured prompt envelope with seven ordered sections, from static instructions through executable processes to dynamic input.
+
+```md
+skill/
+agnostic-prompt-standard/
+┣ assets/
+┃ ┣ agents/
+┃ ┃ ┗ vscode-agent-v1.0.0.agent.md — APS prompt generator for VS Code
+┃ ┣ constants/
+┃ ┃ ┣ constants-json-block-v1.0.0.example.md — JSON block constant syntax example
+┃ ┃ ┗ constants-text-block-v1.0.0.example.md — TEXT block constant syntax example
+┃ ┗ formats/
+┃   ┣ format-code-changes-full-v1.0.0.example.md — Full file code changes template
+┃   ┣ format-code-map-v1.0.0.example.md — Code snippets with source links
+┃   ┣ format-error-v1.0.0.example.md — Single-line error output format
+┃   ┣ format-hierarchical-outline-v1.0.0.example.md — Multilevel numbered outline template
+┃   ┣ format-ideation-list-v1.0.0.example.md — Structured brainstorming ideas format
+┃   ┣ format-markdown-table-v1.0.0.example.md — Process results table format
+┃   ┗ format-table-api-coverage-v1.0.0.example.md — API coverage gap analysis table
+┣ platforms/
+┃ ┣ vscode-copilot/
+┃ ┃ ┣ frontmatter/
+┃ ┃ ┃ ┣ agent-frontmatter.md — YAML template for agent files
+┃ ┃ ┃ ┣ instructions-frontmatter.md — YAML template for instructions files
+┃ ┃ ┃ ┣ prompt-frontmatter.md — YAML template for prompt files
+┃ ┃ ┃ ┗ skill-frontmatter.md — YAML template for skill files
+┃ ┃ ┣ templates/
+┃ ┃ ┃ ┣ .github/
+┃ ┃ ┃ ┃ ┗ agents/
+┃ ┃ ┃ ┗ AGENTS.md — Workspace instructions for AI agents
+┃ ┃ ┣ manifest.json — VS Code file discovery rules
+┃ ┃ ┣ README.md — Adapter quickstart and usage guide
+┃ ┃ ┗ tools-registry.json — Tool names, sets, and mappings
+┃ ┣ _schemas/
+┃ ┃ ┣ platform-manifest.schema.json — JSON Schema for manifest validation
+┃ ┃ ┗ tools-registry.schema.json — JSON Schema for tools registry
+┃ ┣ _template/
+┃ ┃ ┣ manifest.json — Starter manifest for new adapters
+┃ ┃ ┣ README.md — Instructions to create new adapters
+┃ ┃ ┗ tools-registry.json — Empty tools registry template
+┃ ┗ README.md — Platforms overview and adapter contract
+┣ references/
+┃ ┣ 00-structure.md — Prompt sections and envelope rules
+┃ ┣ 01-vocabulary.md — Normative language and authoring rules
+┃ ┣ 02-linting-and-formatting.md — Compile-time formatting rules
+┃ ┣ 03-agentic-control.md — DSL keywords and control flow
+┃ ┣ 04-schemas-and-types.md — Schemas and format contracts
+┃ ┣ 05-grammar.md — EBNF grammar for DSL
+┃ ┣ 06-logging-and-privacy.md — Logging and redaction requirements
+┃ ┗ 07-error-taxonomy.md — Error and warning codes
+┣ scripts/
+┃ ┗ .gitkeep — Placeholder for future scripts
+┗ SKILL.md — Skill entrypoint and layout overview
+```
+
+The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
+
+The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `agents/` subfolders that can be used when building APS-compliant prompts.
+
+The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
+
+The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability) without changing the core APS spec, including the `vscode-copilot/` adapter and templates for creating new adapters.
+
+## CLI Tools
+
+To lower the barrier to adoption, APS ships with CLI tools that let agents install the skill directly into any project.
 
 ### Node CLI (packages/aps-cli-node/)
 ```bash
-npm install          # Install dependencies
-npm test             # Run tests (node --test)
-npm run lint         # Run linter
-npm pack             # Build package (runs prepack)
+npx @agnostic-prompt/aps      # Run CLI
+npm install                   # Install dependencies
+npm test                      # Run tests (node --test)
+npm run lint                  # Run linter
+npm pack                      # Build package (runs prepack)
 ```
 
 ### Python CLI (packages/aps-cli-py/)
 ```bash
-pip install -e ".[dev]"    # Install with dev dependencies
-pytest -q tests            # Run tests
-python -m build            # Build wheel/sdist
+pipx run agnostic-prompt-aps   # Run CLI
+pip install -e ".[dev]"        # Install with dev dependencies
+pytest -q tests                # Run tests
+python -m build                # Build wheel/sdist
 ```
 
 ### Build Tools (from repo root)
@@ -37,12 +113,6 @@ python tools/check_skill_links.py      # Check skill link integrity
 ```
 
 ## Architecture
-
-### Skill Structure
-The normative APS v1.0 spec lives in `skill/agnostic-prompt-standard/references/`:
-- `00-structure.md` through `07-error-taxonomy.md` define the standard
-
-Platform adapters in `skill/.../platforms/` provide non-normative file conventions, frontmatter templates, and tool registries. Currently only `vscode-copilot/` adapter exists.
 
 ### CLI Payload Model
 Both CLIs bundle the skill directory as a "payload" for distribution:
