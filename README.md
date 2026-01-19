@@ -102,6 +102,11 @@ The `platforms/` folder contains non-normative platform adapters that describe p
 
 To lower the barrier to adoption, APS ships with CLI tools that let agents install the skill directly into any project.
 
+| Package | Registry |
+|---------|----------|
+| `@agnostic-prompt/aps` | [npm](https://www.npmjs.com/package/@agnostic-prompt/aps) |
+| `agnostic-prompt-aps` | [PyPI](https://pypi.org/project/agnostic-prompt-aps/) |
+
 ### Node CLI (packages/aps-cli-node/)
 ```bash
 npx @agnostic-prompt/aps      # Run CLI
