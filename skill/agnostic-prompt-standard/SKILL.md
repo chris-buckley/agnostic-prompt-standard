@@ -5,7 +5,7 @@ license: Apache-2.0
 metadata:
   authors: "Christopher Buckley; Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.1"
+  framework_revision: "1.1.2"
   last_updated: "2026-01-15"
 ---
 
