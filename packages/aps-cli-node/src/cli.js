@@ -65,33 +65,8 @@ async function runInit(options) {
   let installTemplates = Boolean(options.templates);
 
   if (!options.yes && isTTY()) {
-    // Scope prompt
-    if (!installScope) {
-      installScope = await select({
-        message: 'Where should APS be installed?',
-        default: repoRoot ? 'repo' : 'personal',
-        choices: [
-          {
-            name: repoRoot ? `Project skill in this repo (${fmtPath(repoRoot)})` : 'Project skill (choose a workspace folder)',
-            value: 'repo',
-          },
-          {
-            name: `Personal skill for your user (${fmtPath(defaultPersonalSkillPath({ claude: options.claude }).replace(SKILL_ID, ''))})`,
-            value: 'personal',
-          },
-        ],
-      });
-    }
-
-    if (installScope === 'repo' && !workspaceRoot) {
-      const rootAnswer = await input({
-        message: 'Workspace root path (the folder that contains .github/):',
-        default: process.cwd(),
-      });
-      workspaceRoot = path.resolve(rootAnswer);
-    }
-
-    if (!platformId && workspaceRoot) {
+    // Platform selection (first, so platform choice can inform installation location)
+    if (!platformId) {
       const platforms = await loadPlatforms(payloadSkillDir);
       const choices = [
         ...(detectedPlatform ? [{ name: `Auto-detected: ${detectedPlatform}`, value: detectedPlatform }] : []),
@@ -111,6 +86,34 @@ async function runInit(options) {
       });
     }
 
+    // Scope prompt
+    if (!installScope) {
+      installScope = await select({
+        message: 'Where should APS be installed?',
+        default: repoRoot ? 'repo' : 'personal',
+        choices: [
+          {
+            name: repoRoot ? `Project skill in this repo (${fmtPath(repoRoot)})` : 'Project skill (choose a workspace folder)',
+            value: 'repo',
+          },
+          {
+            name: `Personal skill for your user (${fmtPath(defaultPersonalSkillPath({ claude: options.claude }).replace(SKILL_ID, ''))})`,
+            value: 'personal',
+          },
+        ],
+      });
+    }
+
+    // Workspace root (only needed for repo scope)
+    if (installScope === 'repo' && !workspaceRoot) {
+      const rootAnswer = await input({
+        message: 'Workspace root path (the folder that contains .github/):',
+        default: process.cwd(),
+      });
+      workspaceRoot = path.resolve(rootAnswer);
+    }
+
+    // Extras (templates)
     if (platformId && workspaceRoot) {
       const extras = await checkbox({
         message: 'Extras to apply to the workspace:',
@@ -170,6 +173,16 @@ async function runInit(options) {
 
   // Execute
   for (const a of actions) {
+    // Templates use merge-copy, no overwrite check needed (copyTemplates handles individual files)
+    if (a.kind === 'templates') {
+      const summary = await copyTemplates(a.from, a.to, { force: options.force });
+      console.log(`Applied platform templates -> ${a.to}`);
+      if (summary.copied.length) console.log(`  Copied: ${summary.copied.length} files`);
+      if (summary.skipped.length) console.log(`  Skipped (existing): ${summary.skipped.length} files`);
+      continue;
+    }
+
+    // Skill overwrite logic
     const destExists = await pathExists(a.to);
     if (destExists && !options.force) {
       if (!options.yes && isTTY()) {
@@ -191,14 +204,8 @@ async function runInit(options) {
     }
 
     await ensureDir(path.dirname(a.to));
-
-    if (a.kind === 'skill') {
-      await copyDir(a.from, a.to);
-      console.log(`Installed APS skill -> ${a.to}`);
-    } else if (a.kind === 'templates') {
-      await copyTemplates(a.from, a.to, { force: options.force });
-      console.log(`Applied platform templates -> ${a.to}`);
-    }
+    await copyDir(a.from, a.to);
+    console.log(`Installed APS skill -> ${a.to}`);
   }
 
   console.log('\nNext steps (VS Code):');
