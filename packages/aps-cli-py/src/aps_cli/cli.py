@@ -246,5 +246,10 @@ def version():
     console.print(__version__)
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the CLI."""
     app()
+
+
+if __name__ == "__main__":
+    main()
