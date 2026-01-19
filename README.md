@@ -41,8 +41,6 @@ The core abstraction is a structured prompt envelope with seven ordered sections
 skill/
   agnostic-prompt-standard/
     assets/
-      agents/
-        vscode-agent-v1.0.0.agent.md          APS prompt generator for VS Code
       constants/
         constants-json-block-v1.0.0.example.md    JSON block constant syntax example
         constants-text-block-v1.0.0.example.md    TEXT block constant syntax example
@@ -92,7 +90,7 @@ skill/
 
 The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
 
-The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `agents/` subfolders that can be used when building APS-compliant prompts.
+The `assets/` folder contains reusable templates and example components organized into `constants/` and `formats/` subfolders that can be used when building APS-compliant prompts.
 
 The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
 
