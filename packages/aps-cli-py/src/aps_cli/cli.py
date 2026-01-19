@@ -74,6 +74,20 @@ def init(
     chosen_templates_root: Optional[Path] = None
 
     if not yes and is_tty():
+        # Platform selection (first, so platform choice can inform installation location)
+        if not platform:
+            platforms = load_platforms(payload_skill_dir)
+            choices = [questionary.Choice(title="None (skill only)", value="none")]
+            if inferred_platform:
+                choices.insert(0, questionary.Choice(title=f"Auto-detected: {inferred_platform}", value=inferred_platform))
+            for p in platforms:
+                if p.platform_id == inferred_platform:
+                    continue
+                choices.append(questionary.Choice(title=f"{p.display_name} ({p.platform_id})", value=p.platform_id))
+
+            platform_id = questionary.select("Select a platform adapter to apply:", choices=choices, default=inferred_platform or "none").ask()
+            assert isinstance(platform_id, str)
+
         # Scope
         if not (repo or personal):
             install_scope = questionary.select(
@@ -97,20 +111,7 @@ def init(
             root_answer = questionary.text("Workspace root path:", default=str(workspace_root)).ask()
             workspace_root = Path(str(root_answer)).expanduser().resolve()
 
-        # Platform selection
-        if not platform:
-            platforms = load_platforms(payload_skill_dir)
-            choices = [questionary.Choice(title="None (skill only)", value="none")]
-            if inferred_platform:
-                choices.insert(0, questionary.Choice(title=f"Auto-detected: {inferred_platform}", value=inferred_platform))
-            for p in platforms:
-                if p.platform_id == inferred_platform:
-                    continue
-                choices.append(questionary.Choice(title=f"{p.display_name} ({p.platform_id})", value=p.platform_id))
-
-            platform_id = questionary.select("Select a platform adapter to apply:", choices=choices, default=inferred_platform or "none").ask()
-            assert isinstance(platform_id, str)
-
+        # Extras (templates)
         install_templates = False
         if platform_id != "none":
             install_templates = questionary.confirm("Apply platform templates to the workspace?", default=True).ask()
