@@ -134,4 +134,4 @@ Style guidelines:
 
 ## Example agents
 
-- VS Code orchestration agent: [../assets/agents/vscode-agent-v1.0.0.agent.md](../assets/agents/vscode-agent-v1.0.0.agent.md)
+- VS Code orchestration agent: [../platforms/vscode-copilot/templates/.github/agents/aps-prompt-protocol.agent.md](../platforms/vscode-copilot/templates/.github/agents/aps-prompt-protocol.agent.md)
