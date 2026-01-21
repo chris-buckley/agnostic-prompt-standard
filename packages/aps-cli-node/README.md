@@ -23,16 +23,20 @@ aps init
 ## Commands
 
 ```bash
-aps init [--repo|--personal] [--platform <id>] [--templates] [--yes] [--force]
+aps init [--repo|--personal] [--platform <id>] [--yes] [--force]
 aps doctor [--json]
 aps platforms
 aps version
 ```
 
-## Claude platform path
+## Platform-specific paths
 
-If you need the Claude platform `.claude/skills` location, pass `--claude`:
+Use `--platform <id>` to specify a platform adapter:
 
 ```bash
-aps init --claude
+# VS Code / Copilot (default paths: .github/skills, ~/.copilot/skills)
+aps init --platform vscode-copilot
+
+# Claude Code (paths: .claude/skills, ~/.claude/skills)
+aps init --platform claude-code
 ```

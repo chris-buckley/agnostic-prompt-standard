@@ -23,13 +23,11 @@ npx @agnostic-prompt/aps init
 pipx run agnostic-prompt-aps init
 ```
 
-For Claude platform path (`.claude/skills`):
+For Claude Code platform path (`.claude/skills`):
 
 ```bash
-npx @agnostic-prompt/aps init --claude
+npx @agnostic-prompt/aps init --platform claude-code
 ```
-
-The `init` command can also copy VS Code templates (agents / AGENTS.md) into your workspace.
 
 ## Skill Structure
 
@@ -53,6 +51,7 @@ skill/agnostic-prompt-standard/
 │   └── formats/            # Output format templates (tables, outlines, etc.)
 ├── platforms/
 │   ├── vscode-copilot/     # VS Code / Copilot adapter
+│   ├── claude-code/        # Claude Code adapter
 │   ├── _schemas/           # JSON Schemas for validation
 │   └── _template/          # Starter template for new adapters
 ├── references/
@@ -107,6 +106,7 @@ pipx run agnostic-prompt-aps doctor
 python tools/sync_payload.py       # Sync skill to CLI payloads
 python tools/check_versions.py     # Verify version consistency
 python tools/check_skill_links.py  # Check skill link integrity
+python tools/bump_version.py X.Y.Z # Update version across all files
 ```
 
 ### Testing
@@ -137,11 +137,10 @@ The canonical version is `framework_revision` in `SKILL.md`. All of these must m
 
 ### Installation Paths
 
-| Scope | Path |
-|-------|------|
-| Project | `.github/skills/agnostic-prompt-standard/` |
-| Personal | `~/.copilot/skills/agnostic-prompt-standard/` |
-| Claude | `.claude/skills/` (with `--claude` flag) |
+| Scope | Default Path | Claude Path |
+|-------|--------------|-------------|
+| Project | `.github/skills/agnostic-prompt-standard/` | `.claude/skills/agnostic-prompt-standard/` |
+| Personal | `~/.copilot/skills/agnostic-prompt-standard/` | `~/.claude/skills/agnostic-prompt-standard/` |
 
 ### Key Files
 
