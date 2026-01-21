@@ -41,5 +41,5 @@ platforms/
 Adapters are intended to **map** the APS standard to a host platform. They are **not** project generators.
 We do not provide generic project scaffolding (like `settings.json` or root `CLAUDE.md` templates).
 
-→ See [ADR 0001: Adapter Scope](../../../../docs/adr/0001-adapter-scope-no-scaffolding.md)
+> See [ADR 0001: Adapter Scope](https://github.com/chris-buckley/agnostic-prompt-standard/blob/main/docs/adr/0001-adapter-scope-no-scaffolding.md)
 

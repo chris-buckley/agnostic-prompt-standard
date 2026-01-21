@@ -132,6 +132,3 @@ Style guidelines:
 - JSON block constant example: [../assets/constants/constants-json-block-v1.0.0.example.md](../assets/constants/constants-json-block-v1.0.0.example.md)
 - TEXT block constant example: [../assets/constants/constants-text-block-v1.0.0.example.md](../assets/constants/constants-text-block-v1.0.0.example.md)
 
-## Example agents
-
-- VS Code orchestration agent: [../platforms/vscode-copilot/templates/.github/agents/aps-prompt-protocol.agent.md](../platforms/vscode-copilot/templates/.github/agents/aps-prompt-protocol.agent.md)
