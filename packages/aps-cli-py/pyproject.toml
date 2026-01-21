@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 aps = "aps_cli.cli:main"
+agnostic-prompt-aps = "aps_cli.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/chris-buckley/agnostic-prompt-standard"

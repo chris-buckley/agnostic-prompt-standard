@@ -36,3 +36,30 @@ If you need the Claude platform `.claude/skills` location, pass `--claude`:
 ```bash
 aps init --claude
 ```
+
+## Windows troubleshooting
+
+On Windows, `pipx run agnostic-prompt-aps` may fail with `FileNotFoundError` due to a known pipx bug with `.exe` launcher paths.
+
+**Workarounds:**
+
+1. **Use `pipx install` instead** (recommended):
+   ```bash
+   pipx install agnostic-prompt-aps
+   aps init
+   ```
+
+2. **Use Python module syntax**:
+   ```bash
+   python -m aps_cli init
+   ```
+
+3. **Try the full-name entry point**:
+   ```bash
+   pipx run agnostic-prompt-aps agnostic-prompt-aps init
+   ```
+
+4. **Upgrade pipx** to the latest version:
+   ```bash
+   python -m pip install --upgrade pipx
+   ```
