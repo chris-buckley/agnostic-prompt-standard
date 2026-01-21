@@ -1,27 +1,18 @@
 # Claude Code CLI adapter
 
-This adapter documents **how APS fits into Claude Code's configuration system**, and provides ready-to-copy templates.
+This adapter documents **how APS fits into Claude Code's configuration system**.
 
 ## What this adapter provides
 
 - `manifest.json` — file conventions, docs links, hooks/imports/permissions
 - `tools-registry.json` — built-in tools with risk levels and capabilities
 - `frontmatter/` — YAML templates for rules and subagents
-- `templates/` — drop-in CLAUDE.md and settings templates
 
 ## Quickstart
 
 1. Install this APS skill into your repo at:
    - `.github/skills/agnostic-prompt-standard/`
-2. Copy the templates into your workspace (root):
-   - From: `platforms/claude-code/templates/`
-   - To: workspace root
-
-After copying, you'll have:
-- `CLAUDE.md` — project memory file
-- `.claude/settings.json` — example settings
-- `.claude/rules/example.md` — example path-scoped rule
-- `.claude/agents/code-reviewer.md` — example custom subagent
+   - OR `.claude/skills/agnostic-prompt-standard/`
 
 ## Claude Code file locations (summary)
 
@@ -247,7 +238,7 @@ See `tools-registry.json` for the full tool catalog with risk levels.
 
 | Aspect | VS Code Copilot | Claude Code |
 |--------|-----------------|-------------|
-| Instructions | `.github/copilot-instructions.md`, `AGENTS.md` | `CLAUDE.md`, `.claude/rules/*.md` |
+| Instructions | `.github/copilot-instructions.md` | `CLAUDE.md`, `.claude/rules/*.md` |
 | Agents | `.github/agents/*.agent.md` | `.claude/agents/*.md` |
 | Prompts | `.github/prompts/*.prompt.md` | N/A (uses slash commands) |
 | Skills | `.github/skills/<id>/SKILL.md` | N/A (uses MCP servers) |
