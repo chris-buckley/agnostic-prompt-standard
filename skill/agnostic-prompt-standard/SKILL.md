@@ -5,7 +5,7 @@ license: Apache-2.0
 metadata:
   authors: "Christopher Buckley; Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.3"
+  framework_revision: "1.1.4"
   last_updated: "2026-01-15"
 ---
 
@@ -55,7 +55,6 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `manifest.json` — file discovery rules.
     - `tools-registry.json` — tool names, sets, and renames.
     - `frontmatter/` — copy/paste YAML frontmatter templates.
-    - `templates/` — drop-in workspace artifacts (`AGENTS.md`, `.github/agents/`).
 - `scripts/` — optional build / compile / lint scripts (empty by default).
 
 ---
