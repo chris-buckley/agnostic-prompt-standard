@@ -17,8 +17,7 @@
       ".github/prompts/*.prompt.md"
     ],
     "instructions": [
-      ".github/copilot-instructions.md",
-      "AGENTS.md"
+      ".github/copilot-instructions.md"
     ]
   },
   "notes": "Describe platform-specific constraints here."

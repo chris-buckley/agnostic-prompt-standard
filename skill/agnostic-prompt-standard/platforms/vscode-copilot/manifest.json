@@ -27,7 +27,6 @@
     "instructions": [
       ".github/copilot-instructions.md",
       ".github/instructions/*.instructions.md",
-      "AGENTS.md (root, optional nested via setting)",
       "CLAUDE.md / GEMINI.md (GitHub ecosystem alternates)"
     ]
   },

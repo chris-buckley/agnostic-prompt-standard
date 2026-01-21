@@ -6,8 +6,7 @@
   "required": [
     "platformId",
     "displayName",
-    "adapterVersion",
-    "fileConventions"
+    "adapterVersion"
   ],
   "properties": {
     "platformId": {
@@ -35,9 +34,6 @@
     "fileConventions": {
       "type": "object",
       "required": [
-        "skills",
-        "agents",
-        "prompts",
         "instructions"
       ],
       "properties": {
@@ -45,25 +41,102 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Skill file locations (platform-specific)"
         },
         "agents": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Agent file locations (platform-specific)"
         },
         "prompts": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Prompt file locations (platform-specific)"
         },
         "instructions": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Instruction/memory file locations"
+        },
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Platform-specific settings file locations"
+        },
+        "mcp": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MCP server configuration file locations"
+        }
+      },
+      "additionalProperties": true
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Platform-specific automation hooks",
+      "properties": {
+        "available": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of available hook types"
+        },
+        "configLocation": {
+          "type": "string",
+          "description": "Where hooks are configured"
+        },
+        "docsUrl": {
+          "type": "string",
+          "description": "Documentation URL for hooks"
+        }
+      },
+      "additionalProperties": true
+    },
+    "imports": {
+      "type": "object",
+      "description": "File import/reference syntax supported by the platform",
+      "properties": {
+        "syntax": {
+          "type": "string",
+          "description": "Import syntax pattern (e.g., @path)"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Example import statements"
+        }
+      },
+      "additionalProperties": true
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Permission/approval system documentation",
+      "properties": {
+        "configLocation": {
+          "type": "string",
+          "description": "Where permissions are configured"
+        },
+        "syntax": {
+          "type": "string",
+          "description": "Permission syntax description"
+        },
+        "docsUrl": {
+          "type": "string",
+          "description": "Documentation URL for permissions"
         }
       },
       "additionalProperties": true

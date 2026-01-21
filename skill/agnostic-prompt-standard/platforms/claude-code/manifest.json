@@ -1,0 +1,71 @@
+{
+  "platformId": "claude-code",
+  "displayName": "Claude Code CLI",
+  "adapterVersion": "1.0.0",
+  "lastUpdated": "2026-01-20",
+  "docs": {
+    "memory": "https://docs.anthropic.com/en/docs/claude-code/memory",
+    "settings": "https://docs.anthropic.com/en/docs/claude-code/settings",
+    "hooks": "https://docs.anthropic.com/en/docs/claude-code/hooks",
+    "mcp": "https://docs.anthropic.com/en/docs/claude-code/mcp",
+    "tools": "https://docs.anthropic.com/en/docs/claude-code/cli-reference",
+    "subagents": "https://docs.anthropic.com/en/docs/claude-code/sub-agents"
+  },
+  "fileConventions": {
+    "instructions": [
+      "./CLAUDE.md",
+      "./.claude/CLAUDE.md",
+      "./.claude/rules/*.md",
+      "./CLAUDE.local.md",
+      "~/.claude/CLAUDE.md",
+      "~/.claude/rules/*.md"
+    ],
+    "settings": [
+      "./.claude/settings.json",
+      "./.claude/settings.local.json",
+      "~/.claude/settings.json"
+    ],
+    "mcp": [
+      "./.mcp.json"
+    ],
+    "agents": [
+      "./.claude/agents/*.md",
+      "~/.claude/agents/*.md"
+    ]
+  },
+  "hooks": {
+    "available": [
+      "PreToolUse",
+      "PostToolUse",
+      "PermissionRequest",
+      "Stop",
+      "SubagentStop",
+      "UserPromptSubmit",
+      "SessionStart",
+      "SessionEnd",
+      "PreCompact",
+      "Notification"
+    ],
+    "configLocation": ".claude/settings.json (hooks field)",
+    "docsUrl": "https://docs.anthropic.com/en/docs/claude-code/hooks"
+  },
+  "imports": {
+    "syntax": "@path",
+    "examples": [
+      "@README.md",
+      "@docs/guide.md",
+      "@~/.claude/shared-rules.md"
+    ]
+  },
+  "permissions": {
+    "configLocation": ".claude/settings.json (permissions field)",
+    "syntax": "Tool(specifier) with allow/deny/ask arrays",
+    "docsUrl": "https://docs.anthropic.com/en/docs/claude-code/settings"
+  },
+  "toolNaming": {
+    "style": "Tools are referenced by their exact names (e.g., Bash, Read, Edit).",
+    "mcpTools": "MCP tools use pattern: mcp__<server>__<tool>",
+    "qualification": "No qualification needed - tool names are global identifiers."
+  },
+  "notes": "Claude Code uses a hierarchical memory system with CLAUDE.md files. Custom subagents are defined in .claude/agents/*.md with YAML frontmatter."
+}

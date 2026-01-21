@@ -6,10 +6,10 @@ This document defines the **agentic control DSL** used inside `<process>` bodies
 
 ```yaml
 keywords:
-  control: [GIVEN, WHEN, IF, ELSE IF, ELSE, THEN]
+  control: [GIVEN, WHEN, THEN, IF, ELSE IF, ELSE, IN]
   actions: [RUN, USE, CAPTURE, SET, UNSET, RETURN, ASSERT]
   story: [TELL, SNAP, MILESTONE]
-  blocks: [WITH, PAR, JOIN]
+  blocks: [WITH, PAR, JOIN, TRY, FOREACH, RECOVER]
   modifiers: [atomic, timeout_ms, retry]
 ```
 
@@ -37,9 +37,13 @@ identifiers:
   reserved:
     - GIVEN
     - WHEN
+    - THEN
     - IF
     - ELSE
-    - THEN
+    - FOREACH
+    - IN
+    - TRY
+    - RECOVER
     - RUN
     - USE
     - SET
@@ -60,6 +64,17 @@ identifiers:
 ```
 
 Reserved words cannot be used as ids/keys/symbols (`AG-002`).
+
+## GIVEN / WHEN / THEN (BDD pattern)
+
+These keywords support Behavior-Driven Design (BDD) style specifications:
+
+- `GIVEN`: establishes preconditions or context that must hold before execution.
+- `WHEN`: describes a trigger, event, or condition that initiates action.
+- `THEN`: specifies expected outcomes or postconditions after execution.
+
+Each keyword opens a block with `:` (Python-style). The block body contains statements that execute
+when the condition is satisfied. Engines SHOULD evaluate conditions in lexical order.
 
 ## Strings, booleans, and numbers
 
@@ -108,35 +123,61 @@ except as explicitly defined by the engine:
 
 Engines SHOULD log deterministic span indices and MUST NOT perform speculative execution.
 
+## FOREACH iteration
+
+`FOREACH` provides deterministic iteration over symbol arrays:
+
+- `FOREACH item IN ITEMS:` iterates over each element in the `ITEMS` array in **index order**.
+- The loop variable (`item`) is bound to the current element for each iteration.
+- Loop body statements execute sequentially; the engine MUST NOT parallelize unless explicitly
+  wrapped in `PAR`.
+- If `ITEMS` is empty, the loop body is skipped entirely.
+- The loop variable is scoped to the block; it is undefined after the closing boundary.
+
+Engines SHOULD expose the current index via a deterministic mechanism (e.g., `_INDEX` symbol).
+
+## TRY / RECOVER error handling
+
+`TRY` and `RECOVER` define structured error handling:
+
+- `TRY:` begins a guarded block; statements execute until completion or first hard error.
+- `RECOVER (err):` binds the error to the named variable (`err`) and executes recovery statements.
+- If no error occurs, the `RECOVER` block is skipped.
+- Recovery statements MAY access the error variable to inspect type, message, or context.
+- Nested `TRY` blocks are permitted; inner handlers take precedence.
+
+Error binding follows engine-defined schema; at minimum, engines MUST expose `err.type` and
+`err.message`.
+
 ## Invocation syntax (normative)
 
 The following describes statement syntax at a human-readable level. The authoritative grammar is
 in **05 Grammar**.
 
 ```text
-RUN `process_id` [where: k1=V1, ...].
+RUN `process_id` [where: k1=V1, ...]
 
-USE `tool_name` [where: k1=V1, ...] [(atomic[, timeout_ms=NUM][, retry=NUM])].
+USE `tool_name` [where: k1=V1, ...] [(atomic[, timeout_ms=NUM][, retry=NUM])]
 
-CAPTURE S1[, S2 ...] from `tool_name` [map: "path1"→S1, "path2?"→S2 ...].
+CAPTURE S1[, S2 ...] from `tool_name` [map: "path1"→S1, "path2?"→S2 ...]
   - Optional field via suffix '?'; no error if missing; symbol unchanged.
 
 SET SYMBOL := VALUE [(from SOURCE)]
   - SOURCE ∈ { `tool`, INP, UpperSym, "Agent Inference" }
 
-UNSET SYMBOL.
+UNSET SYMBOL
 
-RETURN: SYMBOL[, SYMBOL...].
-RETURN: key=VALUE[, key=VALUE ...].
+RETURN: SYMBOL[, SYMBOL...]
+RETURN: key=VALUE[, key=VALUE ...]
   - VALUE may be an artifact reference: {"$artifact":"SYMBOL","hash":"sha256:..."}.
 
-ASSERT <condition>.
-ASSERT ALL: [ <condition>, <condition>, ... ].
+ASSERT <condition>
+ASSERT ALL: [ <condition>, <condition>, ... ]
 
-TELL "message" [why:SYMBOL] [level={brief|full}] [outcome:"text"].
-MILESTONE "title".
+TELL "message" [why:SYMBOL] [level={brief|full}] [outcome:"text"]
+MILESTONE "title"
 
-SNAP [SYM1, SYM2 ...] [delta=true|false] [redact=[SYM_A, SYM_B ...]].
+SNAP [SYM1, SYM2 ...] [delta=true|false] [redact=[SYM_A, SYM_B ...]]
 ```
 
 ## Arguments and values

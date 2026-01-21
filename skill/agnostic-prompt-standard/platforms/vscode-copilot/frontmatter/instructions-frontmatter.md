@@ -9,4 +9,3 @@ description: "Frontend coding conventions"
 Notes:
 - VS Code supports a single `.github/copilot-instructions.md` (workspace-wide).
 - VS Code also supports targeted `*.instructions.md` files (default folder: `.github/instructions`).
-- VS Code can read `AGENTS.md` files (workspace root; optional nested via setting).

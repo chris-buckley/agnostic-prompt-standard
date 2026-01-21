@@ -9,6 +9,7 @@ This document defines the normative EBNF for the agentic control DSL.
 
 ```ebnf
 Letter        = "A"…"Z" | "a"…"z" ;
+LowerLetter   = "a"…"z" ;
 Digit         = "0"…"9" ;
 Space         = " " ;
 Newline       = "\n" ;
@@ -26,13 +27,13 @@ BlockOpen     = UpperSym, ":", Space, BlockType, "<<", EOL ;
 BlockClose    = ">>" ;
 BlockValue    = BlockType, "<<", EOL, { <any line except BlockClose>, EOL }, BlockClose ;
 
-JsonKey       = Letter, { Letter | Digit | "_" | "-" } ;
+JsonKey       = LowerLetter, { LowerLetter | Digit | "_" | "-" } ;
 JsonValue     = String | Number | Bool | "null" | JsonObj | JsonArr | UpperSym ;
 JsonPair      = "\"", JsonKey, "\"", ":", Space?, JsonValue ;
 JsonObj       = "{", Space?, [ JsonPair, { ",", Space?, JsonPair } ], Space?, "}" ;
 JsonArr       = "[", Space?, [ JsonValue, { ",", Space?, JsonValue } ], Space?, "]" ;
 
-IdLower       = Letter, { Letter | Digit | "_" | "-" } ;
+IdLower       = LowerLetter, { LowerLetter | Digit | "_" | "-" } ;
 Key           = IdLower ;
 Value         = String | Number | Bool | JsonObj | JsonArr | UpperSym | Placeholder | EnumLit ;
 
@@ -65,6 +66,7 @@ IfStmt        = "IF", Space, <expr>, ":" ;
 ElseIfStmt    = "ELSE IF", Space, <expr>, ":" ;
 ElseStmt      = "ELSE", ":" ;
 WhenStmt      = "WHEN", Space, <condition-text-no-colon>, ":" ;
+ThenStmt      = "THEN", Space, <condition-text-no-colon>, ":" ;
 GivenStmt     = "GIVEN", Space, <condition-text-no-colon>, ":" ;
 
 EOL           = Newline ;
@@ -88,7 +90,7 @@ RegexConst    = "matches", Space, String ;
 
 Statement     = RunStmt | UseStmt | CaptureStmt | SetStmt | UnsetStmt | ReturnStmt | AssertStmt
               | TellStmt | MileStmt | WithBlock | ParBlock | JoinBlock | ForEachStmt | TryBlock
-              | IfStmt | ElseIfStmt | ElseStmt | SnapStmt ;
+              | IfStmt | ElseIfStmt | ElseStmt | GivenStmt | WhenStmt | ThenStmt | SnapStmt ;
 
 Program       = { Statement, EOL } ;
 ```

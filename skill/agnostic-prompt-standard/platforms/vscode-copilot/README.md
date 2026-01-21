@@ -1,24 +1,17 @@
 # VS Code + GitHub Copilot adapter
 
-This adapter documents **how APS fits into VS Code Copilot's file conventions**, and provides ready-to-copy templates.
+This adapter documents **how APS fits into VS Code Copilot's file conventions**.
 
 ## What this adapter provides
 
 - `manifest.json` — where VS Code discovers skills, agents, prompts, and instructions
 - `tools-registry.json` — a curated registry of tools/tool-sets and their **canonical frontmatter names**
 - `frontmatter/` — copy/paste YAML frontmatter templates for VS Code files
-- `templates/` — drop-in `.github/*` templates (agents)
 
 ## Quickstart
 
-1. Install this APS skill into your repo at:
-   - `.github/skills/agnostic-prompt-standard/`
-2. Copy the templates into your workspace (root):
-   - From: `platforms/vscode-copilot/templates/.github/`
-   - To: `.github/`
-
-After copying, you'll have:
-- `.github/agents/aps-prompt-protocol.agent.md`
+Install this APS skill into your repo at:
+- `.github/skills/agnostic-prompt-standard/`
 
 ## VS Code file locations (summary)
 
@@ -30,7 +23,6 @@ VS Code Copilot discovers these files:
 - **Custom instructions**:
   - `.github/copilot-instructions.md`
   - `.github/instructions/*.instructions.md`
-  - `AGENTS.md` (optional)
 
 See `manifest.json` for the full matrix (including personal and Claude locations).
 

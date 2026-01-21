@@ -103,7 +103,6 @@ export async function loadPlatforms(skillDir) {
         platformId: manifest.platformId ?? e.name,
         displayName: manifest.displayName ?? e.name,
         adapterVersion: manifest.adapterVersion ?? null,
-        hasTemplates: await isDirectory(path.join(platformsDir, e.name, 'templates')),
       });
     } catch {
       // ignore malformed platform manifests
@@ -145,35 +144,37 @@ export async function copyDir(src, dst) {
   });
 }
 
-export async function copyTemplates(templatesDir, workspaceRoot, { force }) {
-  // Merge-copy everything from templatesDir into workspaceRoot.
-  // If force=false, we will not overwrite existing files.
-  // We implement this with a manual tree walk to make overwrite policy explicit.
-  async function walk(rel) {
-    const abs = path.join(templatesDir, rel);
-    const st = await fs.stat(abs);
-    if (st.isDirectory()) {
-      const entries = await fs.readdir(abs);
-      for (const ent of entries) await walk(path.join(rel, ent));
-      return;
+export async function listFilesRecursive(rootDir) {
+  const results = [];
+  async function walk(dir) {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else {
+        results.push(fullPath);
+      }
     }
-    // file
-    const dest = path.join(workspaceRoot, rel);
-    await ensureDir(path.dirname(dest));
-    if (!force && (await pathExists(dest))) {
-      return { skipped: [rel], copied: [] };
-    }
-    await fs.copyFile(abs, dest);
-    return { skipped: [], copied: [rel] };
   }
-
-  const summary = { copied: [], skipped: [] };
-  const entries = await fs.readdir(templatesDir);
-  for (const ent of entries) {
-    const res = await walk(ent);
-    if (!res) continue;
-    summary.copied.push(...res.copied);
-    summary.skipped.push(...res.skipped);
-  }
-  return summary;
+  await walk(rootDir);
+  return results;
 }
+
+export async function copyTemplateTree(srcDir, dstRoot, opts = {}) {
+  const { force = false, filter = () => true } = opts;
+  const files = await listFilesRecursive(srcDir);
+  const copied = [];
+  for (const srcFile of files) {
+    const relPath = path.relative(srcDir, srcFile);
+    if (!filter(relPath)) continue;
+    const dstFile = path.join(dstRoot, relPath);
+    const dstExists = await pathExists(dstFile);
+    if (dstExists && !force) continue;
+    await ensureDir(path.dirname(dstFile));
+    await fs.copyFile(srcFile, dstFile);
+    copied.push(relPath);
+  }
+  return copied;
+}
+

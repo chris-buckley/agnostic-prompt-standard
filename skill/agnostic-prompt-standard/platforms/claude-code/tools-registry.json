@@ -1,0 +1,300 @@
+{
+  "platformId": "claude-code",
+  "adapterVersion": "1.0.0",
+  "lastUpdated": "2026-01-20",
+  "toolNaming": {
+    "style": "Tools are referenced by their exact names (e.g., Bash, Read, Edit).",
+    "mcpTools": "MCP tools use pattern: mcp__<server>__<tool>",
+    "rule": "Use the exact tool name. No qualification or prefixes needed."
+  },
+  "toolSets": [
+    {
+      "id": "filesystem",
+      "mention": "filesystem",
+      "description": "Tool set: file system operations (read, write, edit, search).",
+      "tools": [
+        "Read",
+        "Write",
+        "Edit",
+        "Glob",
+        "Grep",
+        "NotebookEdit"
+      ]
+    },
+    {
+      "id": "execution",
+      "mention": "execution",
+      "description": "Tool set: command execution and task management.",
+      "tools": [
+        "Bash",
+        "Task",
+        "TodoWrite"
+      ]
+    },
+    {
+      "id": "web",
+      "mention": "web",
+      "description": "Tool set: web fetching and search operations.",
+      "tools": [
+        "WebFetch",
+        "WebSearch"
+      ]
+    },
+    {
+      "id": "interaction",
+      "mention": "interaction",
+      "description": "Tool set: user interaction and questions.",
+      "tools": [
+        "AskUserQuestion"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "Read",
+      "mention": "Read",
+      "preferredName": "Read",
+      "legacyName": null,
+      "description": "Read file contents from the local filesystem. Supports text files, images, PDFs, and Jupyter notebooks.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "fs.read"
+      ],
+      "notes": "Can read any file type. Images and PDFs are processed visually."
+    },
+    {
+      "id": "Write",
+      "mention": "Write",
+      "preferredName": "Write",
+      "legacyName": null,
+      "description": "Create or overwrite files on the local filesystem.",
+      "risk": "medium",
+      "sideEffects": "writes",
+      "capabilities": [
+        "fs.write"
+      ],
+      "notes": "Requires reading the file first if it exists. Prefer Edit for existing files."
+    },
+    {
+      "id": "Edit",
+      "mention": "Edit",
+      "preferredName": "Edit",
+      "legacyName": null,
+      "description": "Perform exact string replacements in existing files.",
+      "risk": "medium",
+      "sideEffects": "writes",
+      "capabilities": [
+        "fs.patch"
+      ],
+      "notes": "Requires reading the file first. Fails if old_string is not unique."
+    },
+    {
+      "id": "Bash",
+      "mention": "Bash",
+      "preferredName": "Bash",
+      "legacyName": null,
+      "description": "Execute bash commands in a persistent shell session.",
+      "risk": "high",
+      "sideEffects": "executes",
+      "capabilities": [
+        "shell.exec"
+      ],
+      "notes": "Use for git, npm, docker, etc. Avoid for file operations (use Read/Write/Edit)."
+    },
+    {
+      "id": "Glob",
+      "mention": "Glob",
+      "preferredName": "Glob",
+      "legacyName": null,
+      "description": "Find files by glob pattern matching.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.files"
+      ],
+      "notes": "Faster than find command. Returns paths sorted by modification time."
+    },
+    {
+      "id": "Grep",
+      "mention": "Grep",
+      "preferredName": "Grep",
+      "legacyName": null,
+      "description": "Search file contents using regular expressions (built on ripgrep).",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "search.text"
+      ],
+      "notes": "Supports full regex syntax. Use output_mode for different result formats."
+    },
+    {
+      "id": "WebFetch",
+      "mention": "WebFetch",
+      "preferredName": "WebFetch",
+      "legacyName": null,
+      "description": "Fetch content from a URL and process it with a prompt.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "capabilities": [
+        "web.fetch"
+      ],
+      "notes": "Converts HTML to markdown. Has 15-minute cache."
+    },
+    {
+      "id": "WebSearch",
+      "mention": "WebSearch",
+      "preferredName": "WebSearch",
+      "legacyName": null,
+      "description": "Search the web and return results.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "capabilities": [
+        "web.search"
+      ],
+      "notes": "Must include Sources section with URLs after answering."
+    },
+    {
+      "id": "Task",
+      "mention": "Task",
+      "preferredName": "Task",
+      "legacyName": null,
+      "description": "Launch specialized subagents for complex multi-step tasks.",
+      "risk": "medium",
+      "sideEffects": "mixed",
+      "capabilities": [
+        "agent.spawn"
+      ],
+      "notes": "Subagent types: Bash, general-purpose, Explore, Plan, etc."
+    },
+    {
+      "id": "TodoWrite",
+      "mention": "TodoWrite",
+      "preferredName": "TodoWrite",
+      "legacyName": null,
+      "description": "Create and manage a structured task list for tracking progress.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "planning.todos"
+      ],
+      "notes": "Use for complex multi-step tasks. States: pending, in_progress, completed."
+    },
+    {
+      "id": "NotebookEdit",
+      "mention": "NotebookEdit",
+      "preferredName": "NotebookEdit",
+      "legacyName": null,
+      "description": "Replace, insert, or delete cells in Jupyter notebooks.",
+      "risk": "medium",
+      "sideEffects": "writes",
+      "capabilities": [
+        "notebook.patch"
+      ],
+      "notes": "Cell numbers are 0-indexed. Supports code and markdown cells."
+    },
+    {
+      "id": "AskUserQuestion",
+      "mention": "AskUserQuestion",
+      "preferredName": "AskUserQuestion",
+      "legacyName": null,
+      "description": "Ask the user questions to gather preferences, clarify instructions, or get decisions.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "user.prompt"
+      ],
+      "notes": "Supports multiple choice with 2-4 options. Users can always select 'Other'."
+    },
+    {
+      "id": "TaskOutput",
+      "mention": "TaskOutput",
+      "preferredName": "TaskOutput",
+      "legacyName": null,
+      "description": "Retrieve output from a running or completed background task.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "capabilities": [
+        "agent.output"
+      ],
+      "notes": "Use block=true to wait for completion, block=false for status check."
+    },
+    {
+      "id": "KillShell",
+      "mention": "KillShell",
+      "preferredName": "KillShell",
+      "legacyName": null,
+      "description": "Kill a running background bash shell by its ID.",
+      "risk": "low",
+      "sideEffects": "executes",
+      "capabilities": [
+        "shell.kill"
+      ],
+      "notes": "Use when you need to terminate a long-running shell."
+    },
+    {
+      "id": "Skill",
+      "mention": "Skill",
+      "preferredName": "Skill",
+      "legacyName": null,
+      "description": "Execute a skill (slash command) within the conversation.",
+      "risk": "medium",
+      "sideEffects": "mixed",
+      "capabilities": [
+        "skill.exec"
+      ],
+      "notes": "Used for slash commands like /commit, /review-pr."
+    },
+    {
+      "id": "EnterPlanMode",
+      "mention": "EnterPlanMode",
+      "preferredName": "EnterPlanMode",
+      "legacyName": null,
+      "description": "Transition to plan mode for designing implementation approaches.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "planning.enter"
+      ],
+      "notes": "Use for non-trivial implementation tasks requiring user approval."
+    },
+    {
+      "id": "ExitPlanMode",
+      "mention": "ExitPlanMode",
+      "preferredName": "ExitPlanMode",
+      "legacyName": null,
+      "description": "Signal plan completion and request user approval.",
+      "risk": "low",
+      "sideEffects": "none",
+      "capabilities": [
+        "planning.exit"
+      ],
+      "notes": "Can request bash command permissions via allowedPrompts."
+    }
+  ],
+  "recommended": {
+    "aps": {
+      "planner": [
+        "Read",
+        "Glob",
+        "Grep",
+        "WebFetch",
+        "WebSearch",
+        "TodoWrite",
+        "AskUserQuestion",
+        "Task"
+      ],
+      "implementer": [
+        "Read",
+        "Write",
+        "Edit",
+        "Bash",
+        "Glob",
+        "Grep",
+        "TodoWrite",
+        "Task",
+        "NotebookEdit"
+      ]
+    }
+  }
+}

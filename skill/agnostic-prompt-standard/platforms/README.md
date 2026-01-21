@@ -20,7 +20,6 @@ platforms/
     manifest.json                 # validates against _schemas/platform-manifest.schema.json
     tools-registry.json           # validates against _schemas/tools-registry.schema.json
     frontmatter/                  # copy/paste blocks for this platform
-    templates/                    # ready-to-copy workspace artifacts
 ```
 
 ## Add a new platform adapter
@@ -36,4 +35,11 @@ platforms/
 - Anything under `references/` is **normative** APS.
 - Anything under `platforms/` is **non-normative** (documentation/templates/mappings only).
 - Adapters should prefer **mapping + configuration** over rewriting APS core rules.
+
+## Scope and Philosophy
+
+Adapters are intended to **map** the APS standard to a host platform. They are **not** project generators.
+We do not provide generic project scaffolding (like `settings.json` or root `CLAUDE.md` templates).
+
+> See [ADR 0001: Adapter Scope](https://github.com/chris-buckley/agnostic-prompt-standard/blob/main/docs/adr/0001-adapter-scope-no-scaffolding.md)
 

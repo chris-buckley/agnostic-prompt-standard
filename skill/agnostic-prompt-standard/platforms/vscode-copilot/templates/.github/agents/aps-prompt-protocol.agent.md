@@ -1,7 +1,7 @@
 ---
 name: APS v1.0 Agent
 description: "Generate APS v1.0 .prompt.md files: load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
-tools: ['search', 'read', 'edit', 'execute', 'todo', 'web/fetch', 'read/problems', 'search/changes', 'search/usages']
+tools: ['execute/runInTerminal', 'read/readFile', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'web/fetch', 'todo']
 model: Claude Opus 4.5 (copilot)
 argument-hint: Goal in 1-2 sentences.
 target: vscode

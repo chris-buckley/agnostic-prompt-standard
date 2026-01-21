@@ -6,10 +6,10 @@ DEFAULT_TZ: "Z"
 
 API_CONFIG: JSON<<
 {
-  "apiBasePath": "/v1",
-  "defaultTimeZone": DEFAULT_TZ,
+  "api_base_path": "/v1",
+  "default_time_zone": DEFAULT_TZ,
   "retries": 3,
-  "timeoutMs": 2000
+  "timeout_ms": 2000
 }
 >>
 </constants>
