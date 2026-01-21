@@ -15,7 +15,6 @@ class Platform:
     platform_id: str
     display_name: str
     adapter_version: Optional[str]
-    has_templates: bool
 
 
 def is_tty() -> bool:
@@ -105,13 +104,11 @@ def load_platforms(skill_dir: Path) -> list[Platform]:
         platform_id = manifest.get("platformId", entry.name)
         display_name = manifest.get("displayName", entry.name)
         adapter_version = manifest.get("adapterVersion")
-        has_templates = (entry / "templates").is_dir()
         out.append(
             Platform(
                 platform_id=platform_id,
                 display_name=display_name,
                 adapter_version=adapter_version,
-                has_templates=has_templates,
             )
         )
     out.sort(key=lambda p: p.display_name.lower())
@@ -130,28 +127,38 @@ def copy_dir(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst)
 
 
-def copy_templates(templates_dir: Path, workspace_root: Path, force: bool) -> dict[str, list[str]]:
-    """Merge-copy templates_dir into workspace_root.
+def copy_template_tree(
+    src_dir: Path,
+    dst_root: Path,
+    *,
+    force: bool = False,
+    filter_fn: Optional[callable] = None,
+) -> list[str]:
+    """Copy template files individually with optional filtering.
 
-    Returns {"copied": [...], "skipped": [...]}
+    Args:
+        src_dir: Source templates directory
+        dst_root: Destination root directory
+        force: Overwrite existing files
+        filter_fn: Callback (rel_path: str) -> bool; return False to skip
+
+    Returns:
+        List of relative paths that were copied
     """
     copied: list[str] = []
-    skipped: list[str] = []
+    for src_file in src_dir.rglob("*"):
+        if not src_file.is_file():
+            continue
+        rel_path = src_file.relative_to(src_dir)
+        rel_str = str(rel_path).replace("\\", "/")
+        if filter_fn and not filter_fn(rel_str):
+            continue
+        dst_file = dst_root / rel_path
+        if dst_file.exists() and not force:
+            continue
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_file, dst_file)
+        copied.append(rel_str)
+    return copied
 
-    for root, dirs, files in os.walk(templates_dir):
-        root_path = Path(root)
-        rel_root = root_path.relative_to(templates_dir)
-        for d in dirs:
-            ensure_dir(workspace_root / rel_root / d)
-        for f in files:
-            src = root_path / f
-            rel = (rel_root / f)
-            dst = workspace_root / rel
-            ensure_dir(dst.parent)
-            if dst.exists() and not force:
-                skipped.append(str(rel))
-                continue
-            shutil.copy2(src, dst)
-            copied.append(str(rel))
 
-    return {"copied": copied, "skipped": skipped}
