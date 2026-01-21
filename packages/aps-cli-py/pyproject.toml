@@ -42,3 +42,4 @@ aps_cli = ["payload/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
