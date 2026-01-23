@@ -11,11 +11,11 @@ from rich.table import Table
 
 from . import __version__
 from .core import (
-    SKILL_ID,
     copy_dir,
     copy_template_tree,
     default_personal_skill_path,
     default_project_skill_path,
+    detect_platforms,
     ensure_dir,
     find_repo_root,
     infer_platform_id,
@@ -48,12 +48,28 @@ def init(
         "--root",
         help="Workspace root to install project skill under (defaults to repo root or cwd)",
     ),
-    repo: bool = typer.Option(False, "--repo", help="Force install as project skill (workspace/.github/skills or workspace/.claude/skills)"),
-    personal: bool = typer.Option(False, "--personal", help="Force install as personal skill (~/.copilot/skills or ~/.claude/skills)"),
-    platform: Optional[str] = typer.Option(None, "--platform", help='Platform adapter to apply (default: inferred; use "none" for skill only)'),
-    yes: bool = typer.Option(False, "--yes", help="Non-interactive: accept inferred/default choices"),
+    repo: bool = typer.Option(
+        False,
+        "--repo",
+        help="Force install as project skill (workspace/.github/skills or workspace/.claude/skills)",
+    ),
+    personal: bool = typer.Option(
+        False,
+        "--personal",
+        help="Force install as personal skill (~/.copilot/skills or ~/.claude/skills)",
+    ),
+    platform: Optional[str] = typer.Option(
+        None,
+        "--platform",
+        help='Platform adapter to apply (default: inferred; use "none" for skill only)',
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", help="Non-interactive: accept inferred/default choices"
+    ),
     force: bool = typer.Option(False, "--force", help="Overwrite existing skill"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Print the plan only, do not write files"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print the plan only, do not write files"
+    ),
 ):
     """Install APS into a repo (.github/skills/...) or as a personal skill (~/.copilot/skills/...)."""
 
@@ -63,27 +79,64 @@ def init(
     payload_skill_dir = resolve_payload_skill_dir()
 
     repo_root = find_repo_root(Path.cwd())
-    workspace_root = Path(root).expanduser().resolve() if root else (repo_root or Path.cwd().resolve())
+    workspace_root = (
+        Path(root).expanduser().resolve()
+        if root
+        else (repo_root or Path.cwd().resolve())
+    )
 
     inferred_platform = infer_platform_id(workspace_root)
     platform_id = _norm_platform(platform) or (inferred_platform or "")
 
-    install_scope = "repo" if repo else "personal" if personal else ("repo" if repo_root else "personal")
+    install_scope = (
+        "repo"
+        if repo
+        else "personal"
+        if personal
+        else ("repo" if repo_root else "personal")
+    )
 
     if not yes and is_tty():
-        # Platform selection (first, so platform choice can inform installation location)
+        # Platform selection (multi-select with checkbox)
         if not platform:
             platforms = load_platforms(payload_skill_dir)
-            choices = [questionary.Choice(title="None (skill only)", value="none")]
-            if inferred_platform:
-                choices.insert(0, questionary.Choice(title=f"Auto-detected: {inferred_platform}", value=inferred_platform))
-            for p in platforms:
-                if p.platform_id == inferred_platform:
-                    continue
-                choices.append(questionary.Choice(title=f"{p.display_name} ({p.platform_id})", value=p.platform_id))
+            detected_ids = detect_platforms(workspace_root, payload_skill_dir)
 
-            platform_id = questionary.select("Select a platform adapter to apply:", choices=choices, default=inferred_platform or "none").ask()
-            assert isinstance(platform_id, str)
+            choices = [questionary.Choice(title="[Select all]", value="__all__")]
+            for p in platforms:
+                is_detected = p.platform_id in detected_ids
+                title = f"{p.display_name} ({p.platform_id})"
+                if is_detected:
+                    title = f"{title} [detected]"
+                choices.append(
+                    questionary.Choice(
+                        title=title, value=p.platform_id, checked=is_detected
+                    )
+                )
+
+            selected_platforms = questionary.checkbox(
+                "Select platform adapter(s) to apply (use Space to toggle, Enter to confirm):",
+                choices=choices,
+            ).ask()
+
+            if selected_platforms is None:
+                raise typer.Abort()
+
+            # Handle "Select all" choice
+            if selected_platforms and "__all__" in selected_platforms:
+                selected_platforms = [p.platform_id for p in platforms]
+
+            # Show confirmation summary
+            if selected_platforms:
+                console.print("\n[bold]Selected platforms:[/bold]")
+                for pid in selected_platforms:
+                    console.print(f"  • {pid}")
+                console.print()
+            else:
+                console.print("\n[dim]No platforms selected (skill only)[/dim]\n")
+
+            # Use first selected platform for scope inference, or empty string
+            platform_id = selected_platforms[0] if selected_platforms else "none"
 
         # Scope
         if not (repo or personal):
@@ -92,7 +145,9 @@ def init(
                 "Where should APS be installed?",
                 choices=[
                     questionary.Choice(
-                        title=f"Project skill in this repo ({repo_root})" if repo_root else "Project skill (choose workspace)",
+                        title=f"Project skill in this repo ({repo_root})"
+                        if repo_root
+                        else "Project skill (choose workspace)",
                         value="repo",
                     ),
                     questionary.Choice(
@@ -106,11 +161,17 @@ def init(
 
         # Workspace root (only necessary for repo scope)
         if install_scope == "repo" and (not root and not repo_root):
-            root_answer = questionary.text("Workspace root path:", default=str(workspace_root)).ask()
+            root_answer = questionary.text(
+                "Workspace root path:", default=str(workspace_root)
+            ).ask()
             workspace_root = Path(str(root_answer)).expanduser().resolve()
 
-        force = questionary.confirm("Overwrite existing files if they exist?", default=force).ask()
-        dry_run = questionary.confirm("Dry run (print plan only)?", default=dry_run).ask()
+        force = questionary.confirm(
+            "Overwrite existing files if they exist?", default=force
+        ).ask()
+        dry_run = questionary.confirm(
+            "Dry run (print plan only)?", default=dry_run
+        ).ask()
 
     # Compute destinations
     claude = _is_claude_platform(platform_id)
@@ -126,7 +187,9 @@ def init(
     if platform_id and platform_id != "none":
         templates_dir = payload_skill_dir / "platforms" / platform_id / "templates"
         if templates_dir.is_dir():
-            template_root = Path.home() if install_scope == "personal" else workspace_root
+            template_root = (
+                Path.home() if install_scope == "personal" else workspace_root
+            )
         else:
             templates_dir = None
 
@@ -149,7 +212,9 @@ def init(
     # Install skill
     if skill_dest.exists():
         if not force:
-            raise typer.BadParameter(f"Destination already exists: {skill_dest}. Re-run with --force.")
+            raise typer.BadParameter(
+                f"Destination already exists: {skill_dest}. Re-run with --force."
+            )
         remove_dir(skill_dest)
 
     ensure_dir(skill_dest.parent)
@@ -160,6 +225,7 @@ def init(
 
     # Copy templates (if platform has templates)
     if templates_dir and template_root:
+
         def filter_fn(rel_path: str) -> bool:
             # Skip .github/** for personal installs (shouldn't put .github in home dir)
             if install_scope == "personal" and rel_path.startswith(".github"):
@@ -179,7 +245,9 @@ def init(
 
 
 @app.command()
-def doctor(json_out: bool = typer.Option(False, "--json", help="Machine-readable output")):
+def doctor(
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output"),
+):
     """Check whether APS is installed and infer platform settings."""
     repo_root = find_repo_root(Path.cwd())
     workspace_root = repo_root or Path.cwd().resolve()
@@ -194,10 +262,22 @@ def doctor(json_out: bool = typer.Option(False, "--json", help="Machine-readable
         "cwd": str(Path.cwd()),
         "repo_root": str(repo_root) if repo_root else None,
         "inferred_platform": infer_platform_id(workspace_root),
-        "project_skill": {"path": str(project_skill), "installed": (project_skill / "SKILL.md").exists()},
-        "project_skill_claude": {"path": str(project_skill_claude), "installed": (project_skill_claude / "SKILL.md").exists()},
-        "personal_skill": {"path": str(personal_skill), "installed": (personal_skill / "SKILL.md").exists()},
-        "personal_skill_claude": {"path": str(personal_skill_claude), "installed": (personal_skill_claude / "SKILL.md").exists()},
+        "project_skill": {
+            "path": str(project_skill),
+            "installed": (project_skill / "SKILL.md").exists(),
+        },
+        "project_skill_claude": {
+            "path": str(project_skill_claude),
+            "installed": (project_skill_claude / "SKILL.md").exists(),
+        },
+        "personal_skill": {
+            "path": str(personal_skill),
+            "installed": (personal_skill / "SKILL.md").exists(),
+        },
+        "personal_skill_claude": {
+            "path": str(personal_skill_claude),
+            "installed": (personal_skill_claude / "SKILL.md").exists(),
+        },
     }
 
     if json_out:
@@ -208,10 +288,18 @@ def doctor(json_out: bool = typer.Option(False, "--json", help="Machine-readable
     console.print(f"  cwd: {out['cwd']}")
     console.print(f"  repo_root: {out['repo_root'] or '(none)'}")
     console.print(f"  inferred_platform: {out['inferred_platform'] or '(none)'}")
-    console.print(f"  project skill: {'OK' if out['project_skill']['installed'] else 'missing'} — {out['project_skill']['path']}")
-    console.print(f"  project skill (claude): {'OK' if out['project_skill_claude']['installed'] else 'missing'} — {out['project_skill_claude']['path']}")
-    console.print(f"  personal skill: {'OK' if out['personal_skill']['installed'] else 'missing'} — {out['personal_skill']['path']}")
-    console.print(f"  personal skill (claude): {'OK' if out['personal_skill_claude']['installed'] else 'missing'} — {out['personal_skill_claude']['path']}")
+    console.print(
+        f"  project skill: {'OK' if out['project_skill']['installed'] else 'missing'} — {out['project_skill']['path']}"
+    )
+    console.print(
+        f"  project skill (claude): {'OK' if out['project_skill_claude']['installed'] else 'missing'} — {out['project_skill_claude']['path']}"
+    )
+    console.print(
+        f"  personal skill: {'OK' if out['personal_skill']['installed'] else 'missing'} — {out['personal_skill']['path']}"
+    )
+    console.print(
+        f"  personal skill (claude): {'OK' if out['personal_skill_claude']['installed'] else 'missing'} — {out['personal_skill_claude']['path']}"
+    )
 
 
 @app.command()

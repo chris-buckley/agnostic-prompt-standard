@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Callable, Optional
 
 SKILL_ID = "agnostic-prompt-standard"
 
@@ -15,6 +15,7 @@ class Platform:
     platform_id: str
     display_name: str
     adapter_version: Optional[str]
+    detection_markers: tuple[str, ...] = field(default_factory=tuple)
 
 
 def is_tty() -> bool:
@@ -59,10 +60,35 @@ def infer_platform_id(workspace_root: Path) -> Optional[str]:
     gh = workspace_root / ".github"
     has_agents = (gh / "agents").exists()
     has_prompts = (gh / "prompts").exists()
-    has_instructions = (gh / "copilot-instructions.md").exists() or (gh / "instructions").exists()
+    has_instructions = (gh / "copilot-instructions.md").exists() or (
+        gh / "instructions"
+    ).exists()
     if has_agents or has_prompts or has_instructions:
         return "vscode-copilot"
     return None
+
+
+def detect_platforms(workspace_root: Path, skill_dir: Path) -> list[str]:
+    """Detect all platforms with markers present in workspace.
+
+    Args:
+        workspace_root: Path to workspace root
+        skill_dir: Path to skill directory with platform manifests
+
+    Returns:
+        List of detected platform IDs
+    """
+    platforms = load_platforms(skill_dir)
+    detected: list[str] = []
+
+    for platform in platforms:
+        for marker in platform.detection_markers:
+            marker_path = workspace_root / marker
+            if marker_path.exists():
+                detected.append(platform.platform_id)
+                break  # One marker match is sufficient
+
+    return detected
 
 
 def resolve_payload_skill_dir() -> Path:
@@ -83,7 +109,9 @@ def resolve_payload_skill_dir() -> Path:
     if dev.is_dir():
         return dev
 
-    raise FileNotFoundError("APS payload not found. (Did you run tools/sync_payload.py before building?)")
+    raise FileNotFoundError(
+        "APS payload not found. (Did you run tools/sync_payload.py before building?)"
+    )
 
 
 def load_platforms(skill_dir: Path) -> list[Platform]:
@@ -104,11 +132,13 @@ def load_platforms(skill_dir: Path) -> list[Platform]:
         platform_id = manifest.get("platformId", entry.name)
         display_name = manifest.get("displayName", entry.name)
         adapter_version = manifest.get("adapterVersion")
+        detection_markers = tuple(manifest.get("detectionMarkers", []))
         out.append(
             Platform(
                 platform_id=platform_id,
                 display_name=display_name,
                 adapter_version=adapter_version,
+                detection_markers=detection_markers,
             )
         )
     out.sort(key=lambda p: p.display_name.lower())
@@ -132,7 +162,7 @@ def copy_template_tree(
     dst_root: Path,
     *,
     force: bool = False,
-    filter_fn: Optional[callable] = None,
+    filter_fn: Optional[Callable[[str], bool]] = None,
 ) -> list[str]:
     """Copy template files individually with optional filtering.
 
@@ -160,5 +190,3 @@ def copy_template_tree(
         shutil.copy2(src_file, dst_file)
         copied.append(rel_str)
     return copied
-
-
