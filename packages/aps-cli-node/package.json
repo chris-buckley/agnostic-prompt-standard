@@ -10,20 +10,27 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test ./test/*.test.js",
-    "lint": "node ./scripts/lint.js",
-    "prepack": "node ./scripts/prepack.js",
-    "prepare": "node ./scripts/prepack.js"
+    "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run typecheck",
+    "test": "npm run build && npm run build:test && node --test ./dist-test/*.test.js",
+    "prepack": "npm run build && node ./scripts/prepack.js",
+    "prepare": "npm run prepack"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
     "commander": "^12.0.0"
   },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "typescript": "^5.9.3"
+  },
   "files": [
     "bin/",
-    "src/",
-    "scripts/",
+    "dist/",
     "payload/",
+    "scripts/",
     "README.md",
     "LICENSE"
   ],
