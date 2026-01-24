@@ -13,18 +13,34 @@
     "build": "tsc -p tsconfig.json",
     "build:test": "tsc -p tsconfig.test.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "npm run typecheck",
-    "test": "npm run build && npm run build:test && node --test ./dist-test/*.test.js",
+    "lint": "eslint src test",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "npm run build && npm run build:test && node --test ./dist-test/*.test.js ./dist-test/commands/*.test.js",
     "prepack": "npm run build && node ./scripts/prepack.js",
-    "prepare": "npm run prepack"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.0.0",
-    "commander": "^12.0.0"
+    "commander": "^12.0.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/node": "^18.19.0",
-    "typescript": "^5.9.3"
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   },
   "files": [
     "bin/",

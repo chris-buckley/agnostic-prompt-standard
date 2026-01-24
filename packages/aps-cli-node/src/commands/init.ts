@@ -16,6 +16,7 @@ import {
   listFilesRecursive,
   loadPlatforms,
   pathExists,
+  pickWorkspaceRoot,
   removeDir,
   resolvePayloadSkillDir,
 } from '../core.js';
@@ -95,11 +96,6 @@ interface InitPlan {
   templates: PlannedPlatformTemplates[];
 }
 
-async function pickWorkspaceRoot(cliRoot: string | undefined): Promise<string | null> {
-  if (cliRoot) return path.resolve(cliRoot);
-  return findRepoRoot(process.cwd());
-}
-
 function isClaudePlatform(platformId: string): boolean {
   return platformId === 'claude-code';
 }
@@ -144,10 +140,8 @@ async function planPlatformTemplates(
 
   for (const platformId of selectedPlatforms) {
     const templatesDir = path.join(payloadSkillDir, 'platforms', platformId, 'templates');
-    // eslint-disable-next-line no-await-in-loop
     if (!(await isDirectory(templatesDir))) continue;
 
-    // eslint-disable-next-line no-await-in-loop
     const allFiles = await listFilesRecursive(templatesDir);
 
     const filter = (relPath: string): boolean => {
@@ -162,7 +156,6 @@ async function planPlatformTemplates(
       if (!filter(relPath)) continue;
 
       const dstPath = path.join(templateRoot, relPath);
-      // eslint-disable-next-line no-await-in-loop
       const exists = await pathExists(dstPath);
       files.push({
         relPath,
@@ -371,7 +364,6 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   const skillDests = computeSkillDestinations(installScope, workspaceRoot, selectedPlatforms);
   const skills: PlannedSkillInstall[] = [];
   for (const dst of skillDests) {
-    // eslint-disable-next-line no-await-in-loop
     const exists = await pathExists(dst);
     skills.push({ dst, exists });
   }
@@ -414,31 +406,26 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   } else {
     // Non-interactive: refuse to overwrite without --force
     const conflicts = skills.filter((s) => s.exists);
-    if (conflicts.length > 0 && !options.force) {
-      const firstConflict = conflicts[0]!;
+    const firstConflict = conflicts[0];
+    if (firstConflict && !options.force) {
       throw new Error(`Destination exists: ${firstConflict.dst} (use --force to overwrite)`);
     }
   }
 
   // Execute skill copies
   for (const s of skills) {
-    // eslint-disable-next-line no-await-in-loop
     const dstExists = await pathExists(s.dst);
 
     if (dstExists) {
       if (options.force) {
-        // eslint-disable-next-line no-await-in-loop
         await removeDir(s.dst);
       } else if (isTTY() && !options.yes) {
         // Overwrite was confirmed in the summary prompt.
-        // eslint-disable-next-line no-await-in-loop
         await removeDir(s.dst);
       }
     }
 
-    // eslint-disable-next-line no-await-in-loop
     await ensureDir(path.dirname(s.dst));
-    // eslint-disable-next-line no-await-in-loop
     await copyDir(payloadSkillDir, s.dst);
     console.log(`Installed APS skill -> ${s.dst}`);
   }
@@ -450,7 +437,6 @@ export async function runInit(options: InitCliOptions): Promise<void> {
       return true;
     };
 
-    // eslint-disable-next-line no-await-in-loop
     const copied = await copyTemplateTree(t.templatesDir, t.templateRoot, {
       force: options.force,
       filter,

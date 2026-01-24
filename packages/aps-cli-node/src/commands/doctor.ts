@@ -3,9 +3,8 @@ import path from 'node:path';
 import {
   defaultPersonalSkillPath,
   defaultProjectSkillPath,
-  findRepoRoot,
-  inferPlatformId,
   pathExists,
+  pickWorkspaceRoot,
 } from '../core.js';
 import { detectAdapters } from '../detection/adapters.js';
 
@@ -14,14 +13,8 @@ export interface DoctorCliOptions {
   json: boolean;
 }
 
-async function pickWorkspaceRoot(cliRoot: string | undefined): Promise<string | null> {
-  if (cliRoot) return path.resolve(cliRoot);
-  return findRepoRoot(process.cwd());
-}
-
 export async function runDoctor(options: DoctorCliOptions): Promise<void> {
   const root = await pickWorkspaceRoot(options.root);
-  const detectedPlatform = root ? inferPlatformId(root) : null;
   const detectedAdapters = root ? await detectAdapters(root) : null;
 
   const rows: Array<[string, string, boolean]> = [];
@@ -40,7 +33,6 @@ export async function runDoctor(options: DoctorCliOptions): Promise<void> {
 
   const result = {
     workspace_root: root,
-    detected_platform: detectedPlatform,
     detected_adapters: detectedAdapters,
     installations: rows.map(([scope, p, ok]) => ({ scope, path: p, installed: ok })),
   };
@@ -53,7 +45,6 @@ export async function runDoctor(options: DoctorCliOptions): Promise<void> {
   console.log('APS Doctor');
   console.log('----------');
   console.log(`Workspace root: ${root ?? '(not detected)'}`);
-  console.log(`Detected platform (heuristic): ${detectedPlatform ?? '(none)'}`);
   if (detectedAdapters) {
     const detected = Object.values(detectedAdapters).filter((d) => d.detected);
     console.log(`Detected adapters: ${detected.length ? detected.map((d) => d.platformId).join(', ') : '(none)'}`);
