@@ -8,7 +8,7 @@ provides meaning—not just values.
 
 ### Why
 
-- Static data is a myth. Change is inevitable. Agents evolve in one place.
+- Static data is a myth. Change is inevitable. Agents evolve in one place. Instead of changing documentation + an agent that reads it, change the agent's logic - the single source of truth.
 - Files express shape. Agents express semantics.
 - Files permit misuse. Agents enforce policy.
 - Files answer "what." Agents answer "what, why, when, and how."
