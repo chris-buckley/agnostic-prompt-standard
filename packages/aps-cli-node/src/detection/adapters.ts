@@ -3,7 +3,7 @@ import path from 'node:path';
 import { isDirectory, pathExists } from '../core.js';
 
 /** Known platform adapter identifiers. */
-export type KnownAdapterId = 'vscode-copilot' | 'claude-code' | 'crush' | 'opencode';
+export type KnownAdapterId = 'vscode-copilot' | 'claude-code' | 'opencode';
 
 /**
  * Result of detecting a platform adapter in a workspace.
@@ -46,15 +46,13 @@ const MARKERS: Readonly<Record<KnownAdapterId, readonly Marker[]>> = {
     { kind: 'dir', label: '.claude/agents/', relPath: '.claude/agents' },
     { kind: 'dir', label: '.claude/rules/', relPath: '.claude/rules' },
   ],
-  crush: [
-    { kind: 'file', label: '.crush.json', relPath: '.crush.json' },
-    { kind: 'file', label: 'crush.json', relPath: 'crush.json' },
-    { kind: 'file', label: '.crushignore', relPath: '.crushignore' },
-    { kind: 'dir', label: '.crush/', relPath: '.crush' },
-  ],
   opencode: [
-    { kind: 'file', label: '.opencode.json', relPath: '.opencode.json' },
     { kind: 'dir', label: '.opencode/', relPath: '.opencode' },
+    { kind: 'file', label: '.opencode/opencode.jsonc', relPath: '.opencode/opencode.jsonc' },
+    { kind: 'file', label: '.opencode/opencode.json', relPath: '.opencode/opencode.json' },
+    { kind: 'file', label: 'opencode.json', relPath: 'opencode.json' },
+    { kind: 'file', label: 'opencode.jsonc', relPath: 'opencode.jsonc' },
+    { kind: 'file', label: '.opencode.json', relPath: '.opencode.json' },
   ],
 } as const;
 
@@ -62,7 +60,6 @@ const MARKERS: Readonly<Record<KnownAdapterId, readonly Marker[]>> = {
 export const DEFAULT_ADAPTER_ORDER: readonly KnownAdapterId[] = [
   'vscode-copilot',
   'claude-code',
-  'crush',
   'opencode',
 ] as const;
 

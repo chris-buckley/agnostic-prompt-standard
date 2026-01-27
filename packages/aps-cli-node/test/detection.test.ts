@@ -74,39 +74,8 @@ test('detectAdapters detects claude-code when .mcp.json exists', async () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Crush detection
+// OpenCode detection
 // ─────────────────────────────────────────────────────────────────────────────
-
-test('detectAdapters detects crush when .crush.json exists', async () => {
-  const root = await tempDir();
-  await fs.writeFile(path.join(root, '.crush.json'), '{}');
-
-  const detected = await detectAdapters(root);
-  assert.equal(detected.crush.detected, true);
-  assert.ok(detected.crush.reasons.includes('.crush.json'));
-});
-
-test('detectAdapters detects crush when crush.json exists', async () => {
-  const root = await tempDir();
-  await fs.writeFile(path.join(root, 'crush.json'), '{}');
-
-  const detected = await detectAdapters(root);
-  assert.equal(detected.crush.detected, true);
-  assert.ok(detected.crush.reasons.includes('crush.json'));
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// OpenCode (legacy) detection
-// ─────────────────────────────────────────────────────────────────────────────
-
-test('detectAdapters detects opencode when .opencode.json exists', async () => {
-  const root = await tempDir();
-  await fs.writeFile(path.join(root, '.opencode.json'), '{"ok":true}');
-
-  const detected = await detectAdapters(root);
-  assert.equal(detected.opencode.detected, true);
-  assert.ok(detected.opencode.reasons.includes('.opencode.json'));
-});
 
 test('detectAdapters detects opencode when .opencode/ exists', async () => {
   const root = await tempDir();
@@ -115,6 +84,53 @@ test('detectAdapters detects opencode when .opencode/ exists', async () => {
   const detected = await detectAdapters(root);
   assert.equal(detected.opencode.detected, true);
   assert.ok(detected.opencode.reasons.includes('.opencode/'));
+});
+
+test('detectAdapters detects opencode when .opencode/opencode.jsonc exists', async () => {
+  const root = await tempDir();
+  await fs.mkdir(path.join(root, '.opencode'), { recursive: true });
+  await fs.writeFile(path.join(root, '.opencode', 'opencode.jsonc'), '{}');
+
+  const detected = await detectAdapters(root);
+  assert.equal(detected.opencode.detected, true);
+  assert.ok(detected.opencode.reasons.includes('.opencode/opencode.jsonc'));
+});
+
+test('detectAdapters detects opencode when .opencode/opencode.json exists', async () => {
+  const root = await tempDir();
+  await fs.mkdir(path.join(root, '.opencode'), { recursive: true });
+  await fs.writeFile(path.join(root, '.opencode', 'opencode.json'), '{}');
+
+  const detected = await detectAdapters(root);
+  assert.equal(detected.opencode.detected, true);
+  assert.ok(detected.opencode.reasons.includes('.opencode/opencode.json'));
+});
+
+test('detectAdapters detects opencode when opencode.json exists', async () => {
+  const root = await tempDir();
+  await fs.writeFile(path.join(root, 'opencode.json'), '{}');
+
+  const detected = await detectAdapters(root);
+  assert.equal(detected.opencode.detected, true);
+  assert.ok(detected.opencode.reasons.includes('opencode.json'));
+});
+
+test('detectAdapters detects opencode when opencode.jsonc exists', async () => {
+  const root = await tempDir();
+  await fs.writeFile(path.join(root, 'opencode.jsonc'), '{}');
+
+  const detected = await detectAdapters(root);
+  assert.equal(detected.opencode.detected, true);
+  assert.ok(detected.opencode.reasons.includes('opencode.jsonc'));
+});
+
+test('detectAdapters detects opencode when .opencode.json exists', async () => {
+  const root = await tempDir();
+  await fs.writeFile(path.join(root, '.opencode.json'), '{"ok":true}');
+
+  const detected = await detectAdapters(root);
+  assert.equal(detected.opencode.detected, true);
+  assert.ok(detected.opencode.reasons.includes('.opencode.json'));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,7 +143,6 @@ test('detectAdapters returns no detections for empty directory', async () => {
   const detected = await detectAdapters(root);
   assert.equal(detected['vscode-copilot'].detected, false);
   assert.equal(detected['claude-code'].detected, false);
-  assert.equal(detected.crush.detected, false);
   assert.equal(detected.opencode.detected, false);
 });
 
@@ -143,7 +158,6 @@ test('detectAdapters detects multiple adapters when multiple markers exist', asy
   const detected = await detectAdapters(root);
   assert.equal(detected['vscode-copilot'].detected, true);
   assert.equal(detected['claude-code'].detected, true);
-  assert.equal(detected.crush.detected, false);
   assert.equal(detected.opencode.detected, false);
 });
 
@@ -174,5 +188,5 @@ test('formatDetectionLabel returns empty string for non-detected adapters', () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('DEFAULT_ADAPTER_ORDER contains all known adapters in correct order', () => {
-  assert.deepEqual(DEFAULT_ADAPTER_ORDER, ['vscode-copilot', 'claude-code', 'crush', 'opencode']);
+  assert.deepEqual(DEFAULT_ADAPTER_ORDER, ['vscode-copilot', 'claude-code', 'opencode']);
 });
