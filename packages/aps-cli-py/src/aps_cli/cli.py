@@ -35,10 +35,8 @@ from .core import (
     SKILL_ID,
 )
 
-app = typer.Typer(add_completion=False, no_args_is_help=False)
+app = typer.Typer(add_completion=False)
 console = Console()
-
-InstallScope = Literal["repo", "personal"]
 
 
 @app.callback(invoke_without_command=True)
@@ -47,19 +45,23 @@ def _root(
     version: bool = typer.Option(
         False,
         "--version",
-        help="Print CLI version and exit.",
+        help="Print CLI version",
         is_eager=True,
     ),
-):
-    """Entrypoint callback for global options."""
+) -> None:
+    """Root command for the APS CLI."""
+
     if version:
+        # Match Node: `aps --version` prints version and exits.
         typer.echo(__version__)
         raise typer.Exit()
 
-    # Match Node: print help and exit with usage code when no command is provided.
+    # Match Node: invoking `aps` with no subcommand prints help and exits with code 2.
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help(), err=True)
         raise typer.Exit(code=2)
+
+InstallScope = Literal["repo", "personal"]
 
 
 def _normalize_platform_args(platforms: Optional[list[str]]) -> Optional[list[str]]:
@@ -213,11 +215,7 @@ def _render_plan(plan: InitPlan, force: bool) -> str:
     lines.append("Skill install destinations:")
     for s in plan.skills:
         status = (
-            "overwrite"
-            if s.exists and force
-            else "overwrite (needs confirmation)"
-            if s.exists
-            else "create"
+            "overwrite" if s.exists and force else "overwrite (needs confirmation)" if s.exists else "create"
         )
         lines.append(f"  - {_fmt_path(s.dst)}  [{status}]")
     lines.append("")
@@ -339,11 +337,7 @@ def init(
 
     # Determine scope
     install_scope: InstallScope = (
-        "personal"
-        if personal
-        else "repo"
-        if repo
-        else ("repo" if repo_root else "personal")
+        "personal" if personal else "repo" if repo else ("repo" if repo_root else "personal")
     )
     workspace_root = guessed_workspace_root
 
@@ -404,7 +398,9 @@ def init(
     skill_dests = compute_skill_destinations(
         install_scope, workspace_root, selected_platforms
     )
-    skills = [PlannedSkillInstall(dst=dst, exists=dst.exists()) for dst in skill_dests]
+    skills = [
+        PlannedSkillInstall(dst=dst, exists=dst.exists()) for dst in skill_dests
+    ]
 
     # Plan templates
     templates = _plan_platform_templates(
@@ -560,6 +556,7 @@ def doctor(
     }
 
     if json_out:
+        # Match Node: print raw JSON to stdout (no Rich formatting).
         typer.echo(json.dumps(result, indent=2))
         return
 

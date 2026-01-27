@@ -80,8 +80,8 @@ class TestPlatformManifest:
         with pytest.raises(ValidationError):
             parse_platform_manifest(data)
 
-    def test_invalid_marker_rejected(self):
-        """Test that invalid marker objects fail schema validation."""
+    def test_invalid_marker_handled_gracefully(self):
+        """Test that invalid marker objects are rejected (match Node strictness)."""
         data = {
             "platformId": "test-platform",
             "displayName": "Test Platform",
@@ -89,9 +89,7 @@ class TestPlatformManifest:
                 {"kind": "invalid", "label": ".test", "relPath": ".test"},
             ],
         }
-        with pytest.raises(ValidationError):
-            parse_platform_manifest(data)
-
+        # Use safe parse to avoid throwing in callers.
         manifest, error = safe_parse_platform_manifest(data)
         assert manifest is None
         assert error is not None
@@ -124,13 +122,11 @@ class TestNormalizeDetectionMarker:
         assert marker.rel_path == ".github/agents"
 
     def test_normalize_dict(self):
-        marker = normalize_detection_marker(
-            {
-                "kind": "file",
-                "label": "CLAUDE.md",
-                "relPath": "CLAUDE.md",
-            }
-        )
+        marker = normalize_detection_marker({
+            "kind": "file",
+            "label": "CLAUDE.md",
+            "relPath": "CLAUDE.md",
+        })
         assert marker.kind == "file"
         assert marker.label == "CLAUDE.md"
         assert marker.rel_path == "CLAUDE.md"

@@ -44,9 +44,6 @@ def normalize_detection_marker(
 
     Returns:
         Normalized DetectionMarker
-
-    Raises:
-        ValueError: If the marker object is invalid.
     """
     if isinstance(input_marker, str):
         # String format: ".github/agents/" -> dir, ".github/copilot-instructions.md" -> file
@@ -57,22 +54,21 @@ def normalize_detection_marker(
             label=input_marker,
             rel_path=rel_path,
         )
-
-    if isinstance(input_marker, DetectionMarkerObject):
+    elif isinstance(input_marker, DetectionMarkerObject):
         return DetectionMarker(
             kind=input_marker.kind,
             label=input_marker.label,
             rel_path=input_marker.rel_path,
         )
-
-    if isinstance(input_marker, dict):
+    elif isinstance(input_marker, dict):
+        # Validate dict input to match Node's strictness.
         try:
             obj = DetectionMarkerObject.model_validate(input_marker)
         except ValidationError as e:
-            raise ValueError(str(e)) from e
+            raise ValueError(f"Invalid detection marker object: {e}") from e
         return DetectionMarker(kind=obj.kind, label=obj.label, rel_path=obj.rel_path)
-
-    raise ValueError(f"Invalid detection marker type: {type(input_marker)}")
+    else:
+        raise ValueError(f"Invalid detection marker type: {type(input_marker)}")
 
 
 class PlatformManifest(BaseModel):
