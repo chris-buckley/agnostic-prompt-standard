@@ -20,7 +20,15 @@ import {
   removeDir,
   resolvePayloadSkillDir,
 } from '../core.js';
-import { DEFAULT_ADAPTER_ORDER, detectAdapters, formatDetectionLabel, type AdapterDetection, type KnownAdapterId } from '../detection/adapters.js';
+import {
+  DEFAULT_ADAPTER_ORDER,
+  detectAdapters,
+  formatDetectionLabel,
+  loadPlatformsWithMarkers,
+  type AdapterDetection,
+  type KnownAdapterId,
+  type PlatformWithMarkers,
+} from '../detection/adapters.js';
 
 export interface InitCliOptions {
   root?: string;
@@ -186,10 +194,6 @@ function renderPlan(plan: InitPlan, opts: { force: boolean }): string {
     for (const p of plan.selectedPlatforms) lines.push(`  - ${p}`);
   }
   lines.push('');
-  if (plan.selectedPlatforms.includes('opencode')) {
-    lines.push('Note: OpenCode is archived (legacy).');
-    lines.push('');
-  }
 
   lines.push('Skill install destinations:');
   for (const s of plan.skills) {
@@ -226,7 +230,6 @@ function selectAllChoiceLabel(): string {
 }
 
 function platformDisplayName(platformId: string, platformsById: Map<string, string>): string {
-  if (platformId === 'opencode') return 'OpenCode (legacy)';
   return platformsById.get(platformId) ?? platformId;
 }
 
@@ -243,10 +246,9 @@ function sortPlatformsForUi(available: readonly string[]): string[] {
   return [...orderedKnown, ...remaining];
 }
 
-function detectionFor(platformId: string, detections: Record<KnownAdapterId, AdapterDetection> | null): AdapterDetection | null {
+function detectionFor(platformId: string, detections: Record<string, AdapterDetection> | null): AdapterDetection | null {
   if (!detections) return null;
-  if (platformId in detections) return detections[platformId as KnownAdapterId];
-  return null;
+  return detections[platformId] ?? null;
 }
 
 export async function runInit(options: InitCliOptions): Promise<void> {
@@ -254,11 +256,11 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   const repoRoot = await findRepoRoot(process.cwd());
   const guessedWorkspaceRoot = await pickWorkspaceRoot(options.root);
 
-  const platforms = await loadPlatforms(payloadSkillDir);
-  const platformsById = buildPlatformsById(platforms);
-  const availablePlatformIds = sortPlatformsForUi(platforms.map((p) => p.platformId));
+  const platformsWithMarkers = await loadPlatformsWithMarkers(payloadSkillDir);
+  const platformsById = buildPlatformsById(platformsWithMarkers);
+  const availablePlatformIds = sortPlatformsForUi(platformsWithMarkers.map((p) => p.platformId));
 
-  const detections = guessedWorkspaceRoot ? await detectAdapters(guessedWorkspaceRoot) : null;
+  const detections = guessedWorkspaceRoot ? await detectAdapters(guessedWorkspaceRoot, platformsWithMarkers) : null;
 
   const cliPlatforms = normalizePlatformArgs(options.platform);
 
