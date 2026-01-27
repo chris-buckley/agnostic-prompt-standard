@@ -121,7 +121,7 @@ class InitPlan:
     templates: list[PlannedPlatformTemplates]
 
 
-async def _plan_platform_templates(
+def _plan_platform_templates(
     payload_skill_dir: Path,
     scope: InstallScope,
     workspace_root: Optional[Path],
@@ -248,9 +248,6 @@ def init(
     ),
 ):
     """Install APS into a repo (.github/skills/...) or as a personal skill (~/.copilot/skills/...)."""
-
-    if repo and personal:
-        raise typer.BadParameter("Use at most one of --repo or --personal")
 
     payload_skill_dir = resolve_payload_skill_dir()
     repo_root = find_repo_root(Path.cwd())
@@ -383,12 +380,8 @@ def init(
     ]
 
     # Plan templates
-    import asyncio
-
-    templates = asyncio.get_event_loop().run_until_complete(
-        _plan_platform_templates(
-            payload_skill_dir, install_scope, workspace_root, selected_platforms, force
-        )
+    templates = _plan_platform_templates(
+        payload_skill_dir, install_scope, workspace_root, selected_platforms, force
     )
 
     plan = InitPlan(

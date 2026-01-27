@@ -153,3 +153,22 @@ export function formatDetectionLabel(d: AdapterDetection): string {
   if (!d.detected) return '';
   return ' (detected)';
 }
+
+/**
+ * Sorts platforms for UI display: known adapters first in defined order, then others alphabetically.
+ * @param platforms - Array of platform info objects.
+ * @returns Sorted array of platforms.
+ */
+export function sortPlatformsForUi<T extends { platformId: string; displayName: string }>(
+  platforms: readonly T[]
+): T[] {
+  const knownOrder = new Map<string, number>(DEFAULT_ADAPTER_ORDER.map((id, idx) => [id, idx]));
+
+  const known = platforms.filter((p) => knownOrder.has(p.platformId));
+  const remaining = platforms.filter((p) => !knownOrder.has(p.platformId));
+
+  known.sort((a, b) => (knownOrder.get(a.platformId) ?? 0) - (knownOrder.get(b.platformId) ?? 0));
+  remaining.sort((a, b) => a.displayName.toLowerCase().localeCompare(b.displayName.toLowerCase()));
+
+  return [...known, ...remaining];
+}
