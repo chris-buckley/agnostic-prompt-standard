@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from aps_cli.core import (
     DEFAULT_ADAPTER_ORDER,
     compute_skill_destinations,
@@ -56,6 +58,22 @@ def test_detect_platforms_finds_claude_code(tmp_path: Path):
     assert "claude-code" in detected
 
 
+def test_detect_platforms_finds_claude_code_via_claude_md(tmp_path: Path):
+    """Test detection of claude-code via CLAUDE.md file marker."""
+    (tmp_path / "CLAUDE.md").write_text("# Claude")
+    skill_dir = resolve_payload_skill_dir()
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "claude-code" in detected
+
+
+def test_detect_platforms_finds_claude_code_via_mcp_json(tmp_path: Path):
+    """Test detection of claude-code via .mcp.json file marker."""
+    (tmp_path / ".mcp.json").write_text("{}")
+    skill_dir = resolve_payload_skill_dir()
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "claude-code" in detected
+
+
 def test_detect_platforms_finds_multiple(tmp_path: Path):
     """Test detection of multiple platforms."""
     # Create markers for both
@@ -77,6 +95,92 @@ def test_detect_platforms_returns_empty_when_no_markers(tmp_path: Path):
     detected = detect_platforms(tmp_path, skill_dir)
 
     assert detected == []
+
+
+# OpenCode detection tests (only run if opencode platform exists)
+
+
+def test_detect_platforms_finds_opencode_directory(tmp_path: Path):
+    """Test detection of opencode via .opencode/ directory marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    # Skip if opencode platform not available
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    (tmp_path / ".opencode").mkdir()
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
+
+
+def test_detect_platforms_finds_opencode_jsonc_in_dir(tmp_path: Path):
+    """Test detection of opencode via .opencode/opencode.jsonc marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    opencode_dir = tmp_path / ".opencode"
+    opencode_dir.mkdir()
+    (opencode_dir / "opencode.jsonc").write_text("{}")
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
+
+
+def test_detect_platforms_finds_opencode_json_in_dir(tmp_path: Path):
+    """Test detection of opencode via .opencode/opencode.json marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    opencode_dir = tmp_path / ".opencode"
+    opencode_dir.mkdir()
+    (opencode_dir / "opencode.json").write_text("{}")
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
+
+
+def test_detect_platforms_finds_opencode_json_root(tmp_path: Path):
+    """Test detection of opencode via opencode.json at root marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    (tmp_path / "opencode.json").write_text("{}")
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
+
+
+def test_detect_platforms_finds_opencode_jsonc_root(tmp_path: Path):
+    """Test detection of opencode via opencode.jsonc at root marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    (tmp_path / "opencode.jsonc").write_text("{}")
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
+
+
+def test_detect_platforms_finds_opencode_json_dotted_root(tmp_path: Path):
+    """Test detection of opencode via .opencode.json at root marker."""
+    skill_dir = resolve_payload_skill_dir()
+    platforms = load_platforms(skill_dir)
+
+    if not any(p.platform_id == "opencode" for p in platforms):
+        pytest.skip("opencode platform not available in payload")
+
+    (tmp_path / ".opencode.json").write_text('{"ok":true}')
+    detected = detect_platforms(tmp_path, skill_dir)
+    assert "opencode" in detected
 
 
 def test_detect_adapters_returns_detection_objects(tmp_path: Path):

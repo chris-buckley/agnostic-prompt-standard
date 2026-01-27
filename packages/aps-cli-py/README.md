@@ -1,69 +1,73 @@
 # APS CLI (Python)
 
-This package provides the `aps` CLI for installing the **Agnostic Prompt Standard (APS)** skill into:
+A small CLI to install + manage the Agnostic Prompt Standard (APS) skill.
 
-- a repository workspace: `.github/skills/agnostic-prompt-standard/`
-- or as a personal skill: `~/.copilot/skills/agnostic-prompt-standard/`
+- Installs APS into:
+  - a repository workspace:
+    - Copilot: `.github/skills/agnostic-prompt-standard`
+    - Claude: `.claude/skills/agnostic-prompt-standard`
+  - a personal skill dir:
+    - Copilot: `~/.copilot/skills/agnostic-prompt-standard`
+    - Claude: `~/.claude/skills/agnostic-prompt-standard`
+- Applies platform adapter templates (e.g. Copilot Agents, Claude Code, etc.)
 
-## Install / run
-
-Global install (recommended):
+## Install
 
 ```bash
-pipx install agnostic-prompt-aps
+pipx install aps-cli
+```
+
+## Usage
+
+```bash
+aps <command> [options]
+```
+
+Commands:
+
+* `init` — install APS skill + optional platform templates
+* `doctor` — verify installs and show basic platform detection
+* `platforms` — list bundled platform adapters
+* `version` — print CLI version
+
+### init
+
+Install APS skill + apply adapter templates.
+
+Examples:
+
+```bash
 aps init
-```
-
-One-off run:
-
-```bash
-pipx run agnostic-prompt-aps init
-```
-
-## Commands
-
-```bash
-aps init [--repo|--personal] [--platform <id>] [--yes] [--force]
-aps doctor [--json]
-aps platforms
-aps version
-```
-
-## Platform-specific paths
-
-Use `--platform <id>` to specify a platform adapter:
-
-```bash
-# VS Code / Copilot (default paths: .github/skills, ~/.copilot/skills)
+aps init --repo
+aps init --personal
 aps init --platform vscode-copilot
 
-# Claude Code (paths: .claude/skills, ~/.claude/skills)
-aps init --platform claude-code
+# Multiple adapters: use comma-separated values or repeat the flag (both work cross-CLI)
+aps init --platform vscode-copilot,claude-code
+# or
+aps init --platform vscode-copilot --platform claude-code
+
+aps init --platform none
+aps init --platform claude-code --personal
 ```
 
-## Windows troubleshooting
+### doctor
 
-On Windows, `pipx run agnostic-prompt-aps` may fail with `FileNotFoundError` due to a known pipx bug with `.exe` launcher paths.
+```bash
+aps doctor
+aps doctor --json
+aps doctor --root /path/to/workspace
+```
 
-**Workarounds:**
+### platforms
 
-1. **Use `pipx install` instead** (recommended):
-   ```bash
-   pipx install agnostic-prompt-aps
-   aps init
-   ```
+```bash
+aps platforms
+```
 
-2. **Use Python module syntax**:
-   ```bash
-   python -m aps_cli init
-   ```
+### version
 
-3. **Try the full-name entry point**:
-   ```bash
-   pipx run agnostic-prompt-aps agnostic-prompt-aps init
-   ```
-
-4. **Upgrade pipx** to the latest version:
-   ```bash
-   python -m pip install --upgrade pipx
-   ```
+```bash
+aps version
+aps --version
+```

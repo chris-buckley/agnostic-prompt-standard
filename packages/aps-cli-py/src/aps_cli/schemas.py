@@ -44,6 +44,9 @@ def normalize_detection_marker(
 
     Returns:
         Normalized DetectionMarker
+
+    Raises:
+        ValueError: If the marker object is invalid.
     """
     if isinstance(input_marker, str):
         # String format: ".github/agents/" -> dir, ".github/copilot-instructions.md" -> file
@@ -54,20 +57,22 @@ def normalize_detection_marker(
             label=input_marker,
             rel_path=rel_path,
         )
-    elif isinstance(input_marker, DetectionMarkerObject):
+
+    if isinstance(input_marker, DetectionMarkerObject):
         return DetectionMarker(
             kind=input_marker.kind,
             label=input_marker.label,
             rel_path=input_marker.rel_path,
         )
-    elif isinstance(input_marker, dict):
-        return DetectionMarker(
-            kind=input_marker.get("kind", "file"),
-            label=input_marker.get("label", ""),
-            rel_path=input_marker.get("relPath", input_marker.get("rel_path", "")),
-        )
-    else:
-        raise ValueError(f"Invalid detection marker type: {type(input_marker)}")
+
+    if isinstance(input_marker, dict):
+        try:
+            obj = DetectionMarkerObject.model_validate(input_marker)
+        except ValidationError as e:
+            raise ValueError(str(e)) from e
+        return DetectionMarker(kind=obj.kind, label=obj.label, rel_path=obj.rel_path)
+
+    raise ValueError(f"Invalid detection marker type: {type(input_marker)}")
 
 
 class PlatformManifest(BaseModel):
@@ -81,7 +86,7 @@ class PlatformManifest(BaseModel):
     description: Optional[str] = None
     skill_root: Optional[str] = Field(None, alias="skillRoot")
     file_conventions: Optional[FileConventions] = Field(None, alias="fileConventions")
-    detection_markers_raw: Optional[list[Union[str, dict]]] = Field(
+    detection_markers_raw: Optional[list[Union[str, DetectionMarkerObject]]] = Field(
         None, alias="detectionMarkers"
     )
 

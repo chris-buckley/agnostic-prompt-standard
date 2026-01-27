@@ -1,58 +1,38 @@
 {
-  "name": "@agnostic-prompt/aps",
-  "version": "1.1.5",
-  "description": "CLI to install and manage the Agnostic Prompt Standard (APS) skill and platform templates.",
+  "name": "@agnostic-prompt/aps-cli",
+  "version": "0.5.4",
+  "description": "Install + manage the Agnostic Prompt Standard (APS) skill in supported agent platforms.",
   "type": "module",
   "bin": {
-    "aps": "./bin/aps.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "build:test": "tsc -p tsconfig.test.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src test",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "test": "npm run build && npm run build:test && node --test ./dist-test/*.test.js ./dist-test/commands/*.test.js",
-    "prepack": "npm run build && node ./scripts/prepack.js",
-    "prepare": "husky || true"
-  },
-  "dependencies": {
-    "@inquirer/prompts": "^7.0.0",
-    "commander": "^12.0.0",
-    "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.0.0",
-    "@types/node": "^18.19.0",
-    "eslint": "^9.0.0",
-    "eslint-config-prettier": "^10.0.0",
-    "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
-    "prettier": "^3.0.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.0.0"
-  },
-  "lint-staged": {
-    "*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ]
+    "aps": "./bin/aps.js",
+    "agnostic-prompt-aps": "./bin/aps.js"
   },
   "files": [
-    "bin/",
     "dist/",
-    "payload/",
-    "scripts/",
-    "README.md",
-    "LICENSE"
+    "bin/",
+    "payload/"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/chris-buckley/agnostic-prompt-standard.git"
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "node ./scripts/prepack.js"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^5.5.0",
+    "commander": "^12.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
   },
   "license": "MIT"
 }

@@ -21,10 +21,22 @@ export interface PlatformInfo {
 
 /**
  * Returns the user's home directory path.
- * @returns The home directory path.
  */
 export function homeDir(): string {
   return os.homedir();
+}
+
+/**
+ * Expands a leading "~" to the current user's home directory.
+ * This matches common CLI expectations and Python's Path(...).expanduser().
+ */
+export function expandHome(p: string): string {
+  if (!p) return p;
+  if (p === '~') return homeDir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) {
+    return path.join(homeDir(), p.slice(2));
+  }
+  return p;
 }
 
 /**
@@ -77,7 +89,7 @@ export async function findRepoRoot(startDir: string): Promise<string | null> {
  * @returns The resolved workspace root, or null if not found.
  */
 export async function pickWorkspaceRoot(cliRoot: string | undefined): Promise<string | null> {
-  if (cliRoot) return path.resolve(cliRoot);
+  if (cliRoot) return path.resolve(expandHome(cliRoot));
   return findRepoRoot(process.cwd());
 }
 
@@ -272,6 +284,7 @@ export async function copyDir(src: string, dst: string): Promise<void> {
   await fs.cp(src, dst, {
     recursive: true,
     force: true,
+    preserveTimestamps: true,
   });
 }
 
@@ -334,7 +347,7 @@ export async function copyTemplateTree(
     if (dstExists && !force) continue;
 
     await ensureDir(path.dirname(dstFile));
-    await fs.copyFile(srcFile, dstFile);
+    await fs.cp(srcFile, dstFile, { force: true, preserveTimestamps: true });
     copied.push(relPath);
   }
 

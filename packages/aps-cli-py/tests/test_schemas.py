@@ -80,8 +80,8 @@ class TestPlatformManifest:
         with pytest.raises(ValidationError):
             parse_platform_manifest(data)
 
-    def test_invalid_marker_handled_gracefully(self):
-        """Test that invalid marker objects are handled during normalization."""
+    def test_invalid_marker_rejected(self):
+        """Test that invalid marker objects fail schema validation."""
         data = {
             "platformId": "test-platform",
             "displayName": "Test Platform",
@@ -89,13 +89,12 @@ class TestPlatformManifest:
                 {"kind": "invalid", "label": ".test", "relPath": ".test"},
             ],
         }
-        # Parsing should succeed (markers are stored as raw dicts)
-        manifest = parse_platform_manifest(data)
-        assert manifest.detection_markers_raw is not None
-        # Normalization will use the provided kind as-is
-        markers = manifest.detection_markers
-        assert len(markers) == 1
-        assert markers[0].kind == "invalid"  # Invalid kind is preserved
+        with pytest.raises(ValidationError):
+            parse_platform_manifest(data)
+
+        manifest, error = safe_parse_platform_manifest(data)
+        assert manifest is None
+        assert error is not None
 
     def test_safe_parse_returns_none_on_error(self):
         data = {"displayName": "Test Platform"}
@@ -125,11 +124,13 @@ class TestNormalizeDetectionMarker:
         assert marker.rel_path == ".github/agents"
 
     def test_normalize_dict(self):
-        marker = normalize_detection_marker({
-            "kind": "file",
-            "label": "CLAUDE.md",
-            "relPath": "CLAUDE.md",
-        })
+        marker = normalize_detection_marker(
+            {
+                "kind": "file",
+                "label": "CLAUDE.md",
+                "relPath": "CLAUDE.md",
+            }
+        )
         assert marker.kind == "file"
         assert marker.label == "CLAUDE.md"
         assert marker.rel_path == "CLAUDE.md"

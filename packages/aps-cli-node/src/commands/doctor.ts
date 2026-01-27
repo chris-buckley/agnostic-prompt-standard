@@ -5,39 +5,68 @@ import {
   defaultProjectSkillPath,
   pathExists,
   pickWorkspaceRoot,
+  resolvePayloadSkillDir,
 } from '../core.js';
-import { detectAdapters } from '../detection/adapters.js';
+import { detectAdapters, loadPlatformsWithMarkers, sortPlatformsForUi } from '../detection/adapters.js';
 
-export interface DoctorCliOptions {
+export interface DoctorOptions {
   root?: string;
-  json: boolean;
+  json?: boolean;
 }
 
-export async function runDoctor(options: DoctorCliOptions): Promise<void> {
-  const root = await pickWorkspaceRoot(options.root);
-  const detectedAdapters = root ? await detectAdapters(root) : null;
+interface InstallationRow {
+  scope: string;
+  path: string;
+  installed: boolean;
+}
 
-  const rows: Array<[string, string, boolean]> = [];
+export async function runDoctor(opts: DoctorOptions): Promise<void> {
+  const root = await pickWorkspaceRoot(opts.root);
+
+  let detectedAdapters = null;
+  if (root) {
+    const payloadSkillDir = await resolvePayloadSkillDir();
+    const platforms = sortPlatformsForUi(await loadPlatformsWithMarkers(payloadSkillDir));
+    detectedAdapters = await detectAdapters(root, platforms);
+  }
+
+  const installations: InstallationRow[] = [];
 
   if (root) {
     const repoSkill = defaultProjectSkillPath(root, { claude: false });
     const repoSkillClaude = defaultProjectSkillPath(root, { claude: true });
-    rows.push(['repo', repoSkill, await pathExists(path.join(repoSkill, 'SKILL.md'))]);
-    rows.push(['repo (claude)', repoSkillClaude, await pathExists(path.join(repoSkillClaude, 'SKILL.md'))]);
+    installations.push({
+      scope: 'repo',
+      path: repoSkill,
+      installed: await pathExists(path.join(repoSkill, 'SKILL.md')),
+    });
+    installations.push({
+      scope: 'repo (claude)',
+      path: repoSkillClaude,
+      installed: await pathExists(path.join(repoSkillClaude, 'SKILL.md')),
+    });
   }
 
   const personalSkill = defaultPersonalSkillPath({ claude: false });
   const personalSkillClaude = defaultPersonalSkillPath({ claude: true });
-  rows.push(['personal', personalSkill, await pathExists(path.join(personalSkill, 'SKILL.md'))]);
-  rows.push(['personal (claude)', personalSkillClaude, await pathExists(path.join(personalSkillClaude, 'SKILL.md'))]);
+  installations.push({
+    scope: 'personal',
+    path: personalSkill,
+    installed: await pathExists(path.join(personalSkill, 'SKILL.md')),
+  });
+  installations.push({
+    scope: 'personal (claude)',
+    path: personalSkillClaude,
+    installed: await pathExists(path.join(personalSkillClaude, 'SKILL.md')),
+  });
 
   const result = {
     workspace_root: root,
     detected_adapters: detectedAdapters,
-    installations: rows.map(([scope, p, ok]) => ({ scope, path: p, installed: ok })),
+    installations,
   };
 
-  if (options.json) {
+  if (opts.json) {
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -45,13 +74,16 @@ export async function runDoctor(options: DoctorCliOptions): Promise<void> {
   console.log('APS Doctor');
   console.log('----------');
   console.log(`Workspace root: ${root ?? '(not detected)'}`);
+
   if (detectedAdapters) {
     const detected = Object.values(detectedAdapters).filter((d) => d.detected);
     console.log(`Detected adapters: ${detected.length ? detected.map((d) => d.platformId).join(', ') : '(none)'}`);
   }
   console.log('');
+
   console.log('Installed skills:');
-  for (const [scope, p, ok] of rows) {
-    console.log(`- ${scope}: ${p} ${ok ? '✓' : '✗'}`);
+  for (const inst of installations) {
+    const status = inst.installed ? '✓' : '✗';
+    console.log(`- ${inst.scope}: ${inst.path} ${status}`);
   }
 }
