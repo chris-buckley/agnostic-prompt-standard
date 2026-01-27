@@ -6,8 +6,11 @@
   "detectionMarkers": [
     ".claude",
     "CLAUDE.md",
+    "CLAUDE.local.md",
     ".mcp.json",
-    "CLAUDE.local.md"
+    ".claude/settings.json",
+    ".claude/agents",
+    ".claude/rules"
   ],
   "docs": {
     "memory": "https://docs.anthropic.com/en/docs/claude-code/memory",

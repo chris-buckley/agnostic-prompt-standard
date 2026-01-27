@@ -1,0 +1,32 @@
+{
+  "platformId": "opencode",
+  "displayName": "OpenCode",
+  "adapterVersion": "1.0.0",
+  "lastUpdated": "2026-01-27",
+  "detectionMarkers": [
+    ".opencode",
+    ".opencode/opencode.jsonc",
+    ".opencode/opencode.json",
+    "opencode.json",
+    "opencode.jsonc",
+    ".opencode.json"
+  ],
+  "docs": {
+    "official": "https://opencode.ai/docs",
+    "config": "https://opencode.ai/docs/config"
+  },
+  "fileConventions": {
+    "instructions": [
+      "AGENTS.md",
+      ".opencode/instructions.md"
+    ],
+    "config": [
+      ".opencode/opencode.jsonc",
+      ".opencode/opencode.json",
+      "opencode.json",
+      "opencode.jsonc",
+      ".opencode.json"
+    ]
+  },
+  "notes": "OpenCode is an AI coding agent by anomalyco. Configuration supports JSONC (JSON with comments). The AGENTS.md file follows the OpenAI agents.md standard and is a shared marker with other platforms."
+}
