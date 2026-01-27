@@ -5,7 +5,7 @@ license: MIT
 metadata:
   authors: "Christopher Buckley; Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.5"
+  framework_revision: "1.1.6"
   last_updated: "2026-01-15"
 ---
 
