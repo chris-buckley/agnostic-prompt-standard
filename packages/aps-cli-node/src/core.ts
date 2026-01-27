@@ -21,21 +21,26 @@ export interface PlatformInfo {
 
 /**
  * Returns the user's home directory path.
+ * @returns The home directory path.
  */
 export function homeDir(): string {
   return os.homedir();
 }
 
 /**
- * Expands a leading "~" to the current user's home directory.
- * This matches common CLI expectations and Python's Path(...).expanduser().
+ * Expands a leading ~ in a path to the user's home directory.
+ * @param p - The path to expand.
+ * @returns Expanded path.
  */
 export function expandHome(p: string): string {
   if (!p) return p;
   if (p === '~') return homeDir();
+
+  // Support "~/..." and "~\\...".
   if (p.startsWith('~/') || p.startsWith('~\\')) {
     return path.join(homeDir(), p.slice(2));
   }
+
   return p;
 }
 
@@ -288,6 +293,10 @@ export async function copyDir(src: string, dst: string): Promise<void> {
   });
 }
 
+function toPosixPath(p: string): string {
+  return p.split(path.sep).join('/');
+}
+
 /**
  * Recursively lists all files in a directory.
  * @param rootDir - The root directory to traverse.
@@ -339,7 +348,7 @@ export async function copyTemplateTree(
   const copied: string[] = [];
 
   for (const srcFile of files) {
-    const relPath = path.relative(srcDir, srcFile);
+    const relPath = toPosixPath(path.relative(srcDir, srcFile));
     if (!filter(relPath)) continue;
 
     const dstFile = path.join(dstRoot, relPath);
