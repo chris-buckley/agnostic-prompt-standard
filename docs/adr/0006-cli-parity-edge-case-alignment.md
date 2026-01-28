@@ -1,4 +1,4 @@
-# ADR-005: CLI Parity Edge Case Alignment
+# ADR-006: CLI Parity Edge Case Alignment
 
 **Date:** 2026-01-27
 **Status:** Accepted
