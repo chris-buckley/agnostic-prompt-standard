@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
-import { findRepoRoot, inferPlatformId } from '../src/core.js';
+import { findRepoRoot, inferPlatformId } from '../dist/core.js';
 
-async function tempDir() {
-  return await fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-node-'));
+async function tempDir(): Promise<string> {
+  return fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-node-'));
 }
 
 test('findRepoRoot walks up to .git', async () => {

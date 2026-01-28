@@ -3,6 +3,13 @@
   "displayName": "VS Code + GitHub Copilot",
   "adapterVersion": "1.0.0",
   "lastUpdated": "2026-01-15",
+  "detectionMarkers": [
+    ".github/copilot-instructions.md",
+    ".github/agents",
+    ".github/prompts",
+    ".github/instructions",
+    ".github/skills"
+  ],
   "docs": {
     "agentSkills": "https://code.visualstudio.com/docs/copilot/customization/agent-skills",
     "promptFiles": "https://code.visualstudio.com/docs/copilot/customization/prompt-files",

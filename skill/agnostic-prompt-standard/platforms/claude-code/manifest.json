@@ -3,6 +3,15 @@
   "displayName": "Claude Code CLI",
   "adapterVersion": "1.0.0",
   "lastUpdated": "2026-01-20",
+  "detectionMarkers": [
+    ".claude",
+    "CLAUDE.md",
+    "CLAUDE.local.md",
+    ".mcp.json",
+    ".claude/settings.json",
+    ".claude/agents",
+    ".claude/rules"
+  ],
   "docs": {
     "memory": "https://docs.anthropic.com/en/docs/claude-code/memory",
     "settings": "https://docs.anthropic.com/en/docs/claude-code/settings",

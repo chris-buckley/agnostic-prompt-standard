@@ -17,7 +17,9 @@ def test_platform_manifest_schema_requires_file_conventions() -> None:
     schema = _read_json(SCHEMA_PATH)
     required = schema.get("required")
     assert isinstance(required, list), "schema.required must be a list"
-    assert "fileConventions" in required, 'schema.required must include "fileConventions"'
+    assert "fileConventions" in required, (
+        'schema.required must include "fileConventions"'
+    )
 
 
 def test_every_platform_manifest_includes_file_conventions() -> None:
@@ -31,9 +33,9 @@ def test_every_platform_manifest_includes_file_conventions() -> None:
 
         manifest = _read_json(manifest_path)
         fc = manifest.get("fileConventions")
-        assert isinstance(
-            fc, dict
-        ), f'Platform "{platform_dir.name}" must define fileConventions'
+        assert isinstance(fc, dict), (
+            f'Platform "{platform_dir.name}" must define fileConventions'
+        )
 
         instructions = fc.get("instructions")
         assert isinstance(instructions, list) and instructions, (
