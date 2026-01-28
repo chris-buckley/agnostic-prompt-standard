@@ -23,7 +23,7 @@ function renderPlatformsTable(platforms: readonly PlatformInfo[]): string {
   const headerSep = '├' + widths.map((w) => '─'.repeat(w + 2)).join('┼') + '┤';
   const bottomBorder = '└' + widths.map((w) => '─'.repeat(w + 2)).join('┴') + '┘';
 
-  const padCell = (text: string, width: number) => ` ${text.padEnd(width)} `;
+  const padCell = (text: string, width: number): string => ` ${text.padEnd(width)} `;
 
   const headerRow =
     '│' + headers.map((h, i) => padCell(h, widths[i] ?? 0)).join('│') + '│';

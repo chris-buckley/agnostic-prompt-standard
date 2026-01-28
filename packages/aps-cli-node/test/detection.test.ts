@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
-import { detectAdapters, formatDetectionLabel, DEFAULT_ADAPTER_ORDER, loadPlatformsWithMarkers, type PlatformWithMarkers } from '../dist/detection/adapters.js';
+import { detectAdapters, formatDetectionLabel, DEFAULT_ADAPTER_ORDER, loadPlatformsWithMarkers } from '../dist/detection/adapters.js';
 
 async function tempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-node-'));
