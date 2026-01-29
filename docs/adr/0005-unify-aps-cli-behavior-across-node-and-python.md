@@ -1,4 +1,4 @@
-# ADR-0005: Unify APS CLI Behavior Across Node and Python
+# ADR-005: Unify APS CLI Behavior Across Node and Python
 
 **Date:** 2026-01-27  
 **Status:** Accepted  
