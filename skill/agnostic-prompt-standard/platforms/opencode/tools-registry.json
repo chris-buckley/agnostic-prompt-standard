@@ -1,4 +1,9 @@
 {
-  "$schema": "../_schemas/tools-registry.schema.json",
-  "tools": []
+  "platformId": "opencode",
+  "adapterVersion": "1.0.0",
+  "lastUpdated": "2026-01-29",
+  "toolNaming": {},
+  "toolSets": [],
+  "tools": [],
+  "recommended": {}
 }

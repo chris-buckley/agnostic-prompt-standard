@@ -1,6 +1,6 @@
 # ADR-003: CLI Parity and Multi-Platform Selection
 
-**Date:** 2025-01-27
+**Date:** 2026-01-27
 **Status:** Accepted
 **Deciders:** @chris-buckley
 **PR/Issue:** #13

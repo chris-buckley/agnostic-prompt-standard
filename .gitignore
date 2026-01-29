@@ -15,3 +15,7 @@ packages/aps-cli-py/src/aps_cli/payload/agnostic-prompt-standard/
 .DS_Store
 .claude/
 CLAUDE.md
+
+# Local workspace
+issues/
+prompts/
