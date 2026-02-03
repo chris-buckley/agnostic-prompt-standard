@@ -11,19 +11,19 @@ tools:
 model: Claude Opus 4.5 (copilot)
 handoffs:
   - label: Draft Issue
-    agent: 10-02-issue-drafter
+    agent: 10-02 Issue Drafter
     prompt: "Draft or analyze issue content."
     send: false
   - label: Research Web
-    agent: 10-08-issue-web-researcher
+    agent: 10-08 Issue Web Researcher
     prompt: "Research external sources."
     send: false
   - label: Research Codebase
-    agent: 10-00-issue-codebase-researcher
+    agent: 10-00 Issue Codebase Researcher
     prompt: "Research codebase for context."
     send: false
   - label: Research History
-    agent: 10-05-issue-history-researcher
+    agent: 10-05 Issue History Researcher
     prompt: "Search existing issues, PRs, and commits for duplicates and context."
     send: false
 ---
