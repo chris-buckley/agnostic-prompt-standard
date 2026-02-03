@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Optional
 
-from .schemas import safe_parse_platform_manifest, normalize_detection_marker
+from .schemas import safe_parse_platform_manifest
 
 SKILL_ID = "agnostic-prompt-standard"
 
