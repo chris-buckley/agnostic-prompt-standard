@@ -11,29 +11,21 @@ tools:
 model: Claude Opus 4.5 (copilot)
 handoffs:
   - label: Draft Issue
-    agent: 10-02 Issue Drafter
+    agent: 10-02-issue-drafter
     prompt: "Draft or analyze issue content."
     send: false
   - label: Research Web
-    agent: 10-08 Issue Web Researcher
+    agent: 10-08-issue-web-researcher
     prompt: "Research external sources."
     send: false
   - label: Research Codebase
-    agent: 10-00 Issue Codebase Researcher
+    agent: 10-00-issue-codebase-researcher
     prompt: "Research codebase for context."
     send: false
   - label: Research History
-    agent: 10-05 Issue History Researcher
+    agent: 10-05-issue-history-researcher
     prompt: "Search existing issues, PRs, and commits for duplicates and context."
     send: false
-  - label: 00 TypeScript Engineer Coordinator
-    agent: 00 TypeScript Engineer Coordinator
-    prompt: "Coordinate TypeScript engineering tasks."
-    send: false
-  - label: 00 TypeScript Engineer Coordinator
-    agent: 00 TypeScript Engineer Coordinator
-    prompt: "Implement the plan."
-    send: true
 ---
 <instructions>
 You are the MAIN agent for GitHub issue operations.

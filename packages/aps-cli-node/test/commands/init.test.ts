@@ -11,6 +11,8 @@ import {
   SKILL_ID,
 } from '../../dist/core.js';
 
+import { renderEmptyPlatformWarning } from '../../dist/commands/init.js';
+
 async function tempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-init-'));
 }
@@ -64,4 +66,20 @@ test('findRepoRoot returns null when no .git directory', async () => {
 
   const found = await findRepoRoot(nested);
   assert.equal(found, null);
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// renderEmptyPlatformWarning tests
+// ────────────────────────────────────────────────────────────────────────────
+
+test('renderEmptyPlatformWarning returns warning message', () => {
+  const warning = renderEmptyPlatformWarning();
+  assert.ok(warning.includes('No platform adapters selected'));
+  assert.ok(warning.includes('Only the APS skill will be installed'));
+  assert.ok(warning.includes('Templates will not be copied'));
+});
+
+test('renderEmptyPlatformWarning mentions --platform flag', () => {
+  const warning = renderEmptyPlatformWarning();
+  assert.ok(warning.includes('--platform'));
 });

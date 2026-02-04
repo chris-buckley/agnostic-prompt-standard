@@ -76,5 +76,21 @@
     "mcpTools": "MCP tools use pattern: mcp__<server>__<tool>",
     "qualification": "No qualification needed - tool names are global identifiers."
   },
-  "notes": "Claude Code uses a hierarchical memory system with CLAUDE.md files. Custom subagents are defined in .claude/agents/*.md with YAML frontmatter."
+  "notes": "Claude Code uses a hierarchical memory system with CLAUDE.md files. Custom subagents are defined in .claude/agents/*.md with YAML frontmatter.",
+  "agentVersioning": {
+    "templates": [
+      {
+        "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
+        "currentPath": "templates/.claude/agents/aps-v1.1.7.md",
+        "frontmatter": {
+          "name": {
+            "pattern": "aps-v{major}-{minor}-{patch}"
+          },
+          "description": {
+            "pattern": "Generate APS v{major}.{minor}.{patch} subagent files: load APS+Claude Code adapter, extract intent, then generate+lint (and write if allowed)."
+          }
+        }
+      }
+    ]
+  }
 }

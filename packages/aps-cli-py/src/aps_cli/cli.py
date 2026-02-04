@@ -239,6 +239,14 @@ def _render_plan(plan: InitPlan, force: bool) -> str:
     return "\n".join(lines)
 
 
+def _render_empty_platform_warning() -> str:
+    """Return warning message for empty platform selection."""
+    return (
+        "Note: No platform adapters selected. Only the APS skill will be installed.\n"
+        "      Templates will not be copied. Use --platform <id> to include platform templates."
+    )
+
+
 @app.command()
 def init(
     root: Optional[str] = typer.Option(
@@ -259,7 +267,7 @@ def init(
     platform: Optional[list[str]] = typer.Option(
         None,
         "--platform",
-        help='Platform adapter(s) to apply (e.g. vscode-copilot, claude-code). Use "none" to skip.',
+        help='Platform adapter(s) to apply (e.g. vscode-copilot, claude-code). Use "none" to skip platform templates.',
     ),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Non-interactive: accept inferred/default choices"
@@ -418,11 +426,18 @@ def init(
     if dry_run:
         console.print("Dry run — planned actions:\n")
         console.print(_render_plan(plan, force))
+        if not plan.selected_platforms:
+            console.print()
+            console.print(_render_empty_platform_warning())
         return
 
     if not yes and is_tty():
         console.print(_render_plan(plan, force))
         console.print()
+
+        if not plan.selected_platforms:
+            console.print(_render_empty_platform_warning())
+            console.print()
 
         if any(s.exists for s in skills) and not force:
             console.print(

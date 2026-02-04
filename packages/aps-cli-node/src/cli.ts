@@ -21,7 +21,7 @@ export async function main(argv: string[]): Promise<void> {
     .option('--root <path>', 'Workspace root path (defaults to git repo root if found)')
     .option('--repo', 'Install as a project skill (under .github/skills or .claude/skills)')
     .option('--personal', 'Install as a personal skill (under ~/.copilot/skills or ~/.claude/skills)')
-    .option('--platform <id...>', 'Platform adapter(s) to apply (e.g. vscode-copilot, claude-code). Use "none" to skip.')
+    .option('--platform <id...>', 'Platform adapter(s) to apply (e.g. vscode-copilot, claude-code). Use "none" to skip platform templates.')
     .option('-y, --yes', 'Non-interactive; accept defaults', false)
     .option('-f, --force', 'Overwrite existing files', false)
     .option('--dry-run', 'Print planned actions without writing', false)

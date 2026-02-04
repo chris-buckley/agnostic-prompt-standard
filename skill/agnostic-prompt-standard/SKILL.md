@@ -3,9 +3,10 @@ name: agnostic-prompt-standard
 description: The reference framework to generate, compile, and lint greenfield prompts that conform to the Agnostic Prompt Standard (APS) v1.0.
 license: MIT
 metadata:
+  repository: "https://github.com/chris-buckley/agnostic-prompt-standard"
   authors: "Christopher Buckley; Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.6"
+  framework_revision: "1.1.7"
   last_updated: "2026-01-15"
 ---
 

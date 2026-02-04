@@ -1,6 +1,6 @@
 ---
-name: APS v1.0 Agent
-description: "Generate APS v1.0 .prompt.md files: load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
+name: APS v1.1.7 Agent
+description: "Generate APS v1.1.7 .prompt.md files: load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
 tools: ['execute/runInTerminal', 'read/readFile', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'web/fetch', 'todo']
 model: Claude Opus 4.5 (copilot)
 argument-hint: Goal in 1-2 sentences.

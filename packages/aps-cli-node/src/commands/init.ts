@@ -232,6 +232,10 @@ function renderPlan(plan: InitPlan, opts: { force: boolean }): string {
   return lines.join('\n');
 }
 
+export function renderEmptyPlatformWarning(): string {
+  return 'Note: No platform adapters selected. Only the APS skill will be installed.\n      Templates will not be copied. Use --platform <id> to include platform templates.';
+}
+
 function selectAllChoiceLabel(): string {
   return 'Select all adapters';
 }
@@ -387,12 +391,21 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   if (options.dryRun) {
     console.log('Dry run — planned actions:\n');
     console.log(renderPlan(plan, { force: options.force }));
+    if (plan.selectedPlatforms.length === 0) {
+      console.log('');
+      console.log(renderEmptyPlatformWarning());
+    }
     return;
   }
 
   if (!options.yes && isTTY()) {
     console.log(renderPlan(plan, { force: options.force }));
     console.log('');
+
+    if (plan.selectedPlatforms.length === 0) {
+      console.log(renderEmptyPlatformWarning());
+      console.log('');
+    }
 
     if (skills.some((s) => s.exists) && !options.force) {
       console.log('Note: One or more skill destinations already exist. Confirming will overwrite them.');
