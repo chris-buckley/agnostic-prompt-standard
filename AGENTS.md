@@ -99,7 +99,7 @@ skill/
         templates/
           .claude/
             agents/
-              aps-agent-protocol.md           APS agent protocol template
+              aps-v{VERSION}.md               APS agent protocol template (versioned)
         manifest.json                         Claude Code file discovery rules
         README.md                             Adapter quickstart and usage guide
         tools-registry.json                   Tool names, sets, and mappings
@@ -115,7 +115,7 @@ skill/
         templates/
           .github/
             agents/
-              aps-prompt-protocol.agent.md    APS prompt protocol agent template
+              aps-v{VERSION}.agent.md         APS prompt protocol agent template (versioned)
         manifest.json                         VS Code file discovery rules
         README.md                             Adapter quickstart and usage guide
         tools-registry.json                   Tool names, sets, and mappings
@@ -199,6 +199,7 @@ python tools/sync_payload.py --python  # Sync to Python payload only
 python tools/check_versions.py         # Verify version consistency
 python tools/check_skill_links.py      # Check skill link integrity
 python tools/bump_version.py           # Bump version across all sources
+python tools/test_bump_version.py      # Run bump_version unit tests
 python tools/generate-decision-index.py  # Generate ADR decision index
 >>
 
@@ -241,10 +242,10 @@ Default paths for installed skills:
 
 TESTING_COMMANDS: TEXT<<
 Run all tests:
-# Node CLI (requires build first: npm run build)
+# Node CLI (uses native node:test runner, requires build first)
 npm test --prefix packages/aps-cli-node
 
-# Python CLI
+# Python CLI (uses pytest)
 cd packages/aps-cli-py && pytest -q tests
 
 Manual CLI verification:
