@@ -4,8 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from aps_cli.schemas import (
-    PlatformManifest,
-    SkillFrontmatter,
     parse_platform_manifest,
     parse_skill_frontmatter,
     safe_parse_platform_manifest,
