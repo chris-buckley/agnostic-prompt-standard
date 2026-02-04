@@ -42,5 +42,21 @@
     "frontmatterTools": "Prompt/agent YAML frontmatter uses tool names (no leading #).",
     "qualification": "Newer VS Code versions may require fully-qualified tool names (example: search/codebase). Always prefer the name displayed in the VS Code tools picker."
   },
-  "notes": "This adapter documents VS Code Copilot-specific frontmatter and tool naming so APS prompts can be generated reproducibly."
+  "notes": "This adapter documents VS Code Copilot-specific frontmatter and tool naming so APS prompts can be generated reproducibly.",
+  "agentVersioning": {
+    "templates": [
+      {
+        "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
+        "currentPath": "templates/.github/agents/aps-v1.1.7.agent.md",
+        "frontmatter": {
+          "name": {
+            "pattern": "APS v{major}.{minor}.{patch} Agent"
+          },
+          "description": {
+            "pattern": "Generate APS v{major}.{minor}.{patch} .prompt.md files: load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
+          }
+        }
+      }
+    ]
+  }
 }

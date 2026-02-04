@@ -148,3 +148,23 @@ Run `python tools/generate_decision_index.py` to regenerate.
 **D036** — Node binary alias parity  
 : The Node package exposes `agnostic-prompt-aps` as an additional executable name.  
 : *Source:* [ADR-0006 §6](0006-cli-parity-edge-case-alignment.md#6-node-binary-alias-parity)
+
+**D037** — Three-Number Semver in Agent Names  
+: Agent versions use full semver format (v1.1.7 not v1.1).  
+: *Source:* [ADR-0007 §1](0007-platform-agent-template-versioning.md#1-three-number-semver-in-agent-names)
+
+**D038** — Agent Version Parity with CLI  
+: Agent version must exactly match CLI version.  
+: *Source:* [ADR-0007 §2](0007-platform-agent-template-versioning.md#2-agent-version-parity-with-cli)
+
+**D039** — Simplified Agent Filename  
+: Agent files use `aps-v{version}` naming pattern.  
+: *Source:* [ADR-0007 §3](0007-platform-agent-template-versioning.md#3-simplified-agent-filename)
+
+**D040** — Platform-Specific Versioning Config  
+: Each platform's manifest.json defines its own versioning patterns.  
+: *Source:* [ADR-0007 §4](0007-platform-agent-template-versioning.md#4-platform-specific-versioning-config)
+
+**D041** — Automatic Version Bump  
+: bump_version.py updates agent templates alongside core files.  
+: *Source:* [ADR-0007 §5](0007-platform-agent-template-versioning.md#5-automatic-version-bump)
