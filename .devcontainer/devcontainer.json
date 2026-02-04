@@ -7,7 +7,7 @@
     },
     "ghcr.io/devcontainers/features/copilot-cli": {},
     "ghcr.io/jsburckhardt/devcontainer-features/opencode": {},
-    "ghcr.io/devcontainers/features/github-cli": {}  
+    "ghcr.io/devcontainers/features/github-cli": {}
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {
