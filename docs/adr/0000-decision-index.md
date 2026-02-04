@@ -168,3 +168,19 @@ Run `python tools/generate_decision_index.py` to regenerate.
 **D041** — Automatic Version Bump  
 : bump_version.py updates agent templates alongside core files.  
 : *Source:* [ADR-0007 §5](0007-platform-agent-template-versioning.md#5-automatic-version-bump)
+
+**D042** — Intent-Based Artifact Type Detection  
+: The `refine` process detects artifact type from user input using keyword matching rules.  
+: *Source:* [ADR-0008 §1](0008-aps-agent-dual-artifact-generation.md#1-intent-based-artifact-type-detection)
+
+**D043** — Dual Directory Routing  
+: The `generate` process conditionally routes output to either `.github/agents/` or `.github/prompts/` based on `ARTIFACT_TYPE`.  
+: *Source:* [ADR-0008 §2](0008-aps-agent-dual-artifact-generation.md#2-dual-directory-routing)
+
+**D044** — Dynamic Frontmatter Loading  
+: The `generate` process loads the appropriate frontmatter template based on `ARTIFACT_TYPE`.  
+: *Source:* [ADR-0008 §3](0008-aps-agent-dual-artifact-generation.md#3-dynamic-frontmatter-loading)
+
+**D045** — Ambiguity Resolution  
+: When user intent is ambiguous, the agent asks which type they want instead of guessing.  
+: *Source:* [ADR-0008 §4](0008-aps-agent-dual-artifact-generation.md#4-ambiguity-resolution)
