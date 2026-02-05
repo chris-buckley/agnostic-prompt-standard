@@ -13,7 +13,7 @@ packages/aps-cli-py/src/aps_cli/payload/agnostic-prompt-standard/
 
 # Tooling
 .DS_Store
-.claude/
+/.claude/
 CLAUDE.md
 
 # Local workspace
