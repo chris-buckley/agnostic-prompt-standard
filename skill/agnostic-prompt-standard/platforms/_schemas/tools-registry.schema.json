@@ -23,6 +23,47 @@
     },
     "toolNaming": {
       "type": "object",
+      "properties": {
+        "overview": {
+          "type": "string"
+        },
+        "tiers": {
+          "type": "object",
+          "properties": {
+            "toolSet": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "example": { "type": "string" },
+                "usage": { "type": "string" }
+              }
+            },
+            "qualifiedName": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "pattern": { "type": "string" },
+                "example": { "type": "string" },
+                "usage": { "type": "string" }
+              }
+            },
+            "functionName": {
+              "type": "object",
+              "properties": {
+                "description": { "type": "string" },
+                "example": { "type": "string" },
+                "usage": { "type": "string" }
+              }
+            }
+          }
+        },
+        "chatMentions": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        }
+      },
       "additionalProperties": true
     },
     "toolSets": {
@@ -31,27 +72,12 @@
         "type": "object",
         "required": [
           "id",
-          "mention",
           "description"
         ],
         "properties": {
           "id": {
-            "type": "string"
-          },
-          "mention": {
-            "type": "string"
-          },
-          "preferredName": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "legacyName": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "description": "The tool set name used in frontmatter (e.g., 'execute', 'search')."
           },
           "description": {
             "type": "string"
@@ -60,7 +86,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "List of qualified tool names in this set."
           }
         },
         "additionalProperties": false
@@ -71,30 +98,28 @@
       "items": {
         "type": "object",
         "required": [
-          "id",
-          "mention",
+          "qualifiedName",
+          "functionName",
           "description",
           "risk",
           "sideEffects"
         ],
         "properties": {
-          "id": {
-            "type": "string"
+          "toolSet": {
+            "type": ["string", "null"],
+            "description": "The tool set this tool belongs to, or null for standalone tools."
+          },
+          "qualifiedName": {
+            "type": "string",
+            "description": "The name used in frontmatter to select this specific tool (e.g., 'execute/runInTerminal')."
+          },
+          "functionName": {
+            "type": "string",
+            "description": "The snake_case function name used by the model at runtime (e.g., 'run_in_terminal')."
           },
           "mention": {
-            "type": "string"
-          },
-          "preferredName": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "legacyName": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string",
+            "description": "The chat mention syntax (e.g., '#runInTerminal')."
           },
           "description": {
             "type": "string"
@@ -118,11 +143,22 @@
               "mixed"
             ]
           },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "parameters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "required": { "type": "boolean" },
+                "enum": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "format": { "type": "string" },
+                "description": { "type": "string" }
+              }
+            },
+            "description": "Tool parameters with their types and requirements."
           },
           "notes": {
             "type": "string"

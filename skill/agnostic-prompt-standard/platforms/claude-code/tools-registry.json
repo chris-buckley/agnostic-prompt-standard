@@ -1,17 +1,34 @@
 {
   "platformId": "claude-code",
-  "adapterVersion": "1.0.0",
-  "lastUpdated": "2026-01-20",
+  "adapterVersion": "1.2.0",
+  "lastUpdated": "2026-02-04",
   "toolNaming": {
-    "style": "Tools are referenced by their exact names (e.g., Bash, Read, Edit).",
+    "overview": "Claude Code uses a single-tier tool naming system.",
+    "tiers": {
+      "toolSet": {
+        "description": "Logical grouping of tools (not used in frontmatter).",
+        "example": "filesystem",
+        "usage": "For documentation and organization only"
+      },
+      "qualifiedName": {
+        "description": "The exact tool name used in frontmatter and at runtime.",
+        "pattern": "PascalCase",
+        "example": "Read",
+        "usage": "tools: Read, Write, Edit"
+      },
+      "functionName": {
+        "description": "Same as qualifiedName for Claude Code.",
+        "example": "Read",
+        "usage": "Model calls this name when invoking the tool"
+      }
+    },
     "mcpTools": "MCP tools use pattern: mcp__<server>__<tool>",
-    "rule": "Use the exact tool name. No qualification or prefixes needed."
+    "rule": "Use the exact tool name. No qualification or prefixes needed. Tools are comma-separated strings in frontmatter."
   },
   "toolSets": [
     {
       "id": "filesystem",
-      "mention": "filesystem",
-      "description": "Tool set: file system operations (read, write, edit, search).",
+      "description": "File system operations (read, write, edit, search).",
       "tools": [
         "Read",
         "Write",
@@ -23,18 +40,22 @@
     },
     {
       "id": "execution",
-      "mention": "execution",
-      "description": "Tool set: command execution and task management.",
+      "description": "Command execution and task management.",
       "tools": [
         "Bash",
         "Task",
-        "TodoWrite"
+        "TaskOutput",
+        "TaskStop",
+        "TaskCreate",
+        "TaskUpdate",
+        "TaskList",
+        "TaskGet",
+        "MCPSearch"
       ]
     },
     {
       "id": "web",
-      "mention": "web",
-      "description": "Tool set: web fetching and search operations.",
+      "description": "Web fetching and search operations.",
       "tools": [
         "WebFetch",
         "WebSearch"
@@ -42,234 +63,364 @@
     },
     {
       "id": "interaction",
-      "mention": "interaction",
-      "description": "Tool set: user interaction and questions.",
+      "description": "User interaction and questions.",
       "tools": [
         "AskUserQuestion"
+      ]
+    },
+    {
+      "id": "planning",
+      "description": "Planning mode tools.",
+      "tools": [
+        "EnterPlanMode",
+        "ExitPlanMode"
+      ]
+    },
+    {
+      "id": "skills",
+      "description": "Skill and slash command execution.",
+      "tools": [
+        "Skill"
+      ]
+    },
+    {
+      "id": "code_intelligence",
+      "description": "Code analysis and navigation tools.",
+      "tools": [
+        "LSP"
       ]
     }
   ],
   "tools": [
     {
-      "id": "Read",
+      "toolSet": "filesystem",
+      "qualifiedName": "Read",
+      "functionName": "Read",
       "mention": "Read",
-      "preferredName": "Read",
-      "legacyName": null,
       "description": "Read file contents from the local filesystem. Supports text files, images, PDFs, and Jupyter notebooks.",
       "risk": "low",
       "sideEffects": "reads",
-      "capabilities": [
-        "fs.read"
-      ],
-      "notes": "Can read any file type. Images and PDFs are processed visually."
+      "parameters": {
+        "file_path": { "type": "string", "required": true },
+        "offset": { "type": "integer", "required": false },
+        "limit": { "type": "integer", "required": false },
+        "pages": { "type": "string", "required": false }
+      },
+      "notes": "Can read any file type. Images and PDFs are processed visually. Use offset/limit for large files, pages for PDFs."
     },
     {
-      "id": "Write",
+      "toolSet": "filesystem",
+      "qualifiedName": "Write",
+      "functionName": "Write",
       "mention": "Write",
-      "preferredName": "Write",
-      "legacyName": null,
       "description": "Create or overwrite files on the local filesystem.",
       "risk": "medium",
       "sideEffects": "writes",
-      "capabilities": [
-        "fs.write"
-      ],
+      "parameters": {
+        "file_path": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true }
+      },
       "notes": "Requires reading the file first if it exists. Prefer Edit for existing files."
     },
     {
-      "id": "Edit",
+      "toolSet": "filesystem",
+      "qualifiedName": "Edit",
+      "functionName": "Edit",
       "mention": "Edit",
-      "preferredName": "Edit",
-      "legacyName": null,
       "description": "Perform exact string replacements in existing files.",
       "risk": "medium",
       "sideEffects": "writes",
-      "capabilities": [
-        "fs.patch"
-      ],
-      "notes": "Requires reading the file first. Fails if old_string is not unique."
+      "parameters": {
+        "file_path": { "type": "string", "required": true },
+        "old_string": { "type": "string", "required": true },
+        "new_string": { "type": "string", "required": true },
+        "replace_all": { "type": "boolean", "required": false }
+      },
+      "notes": "Requires reading the file first. Fails if old_string is not unique. Use replace_all for global replacement."
     },
     {
-      "id": "Bash",
-      "mention": "Bash",
-      "preferredName": "Bash",
-      "legacyName": null,
-      "description": "Execute bash commands in a persistent shell session.",
-      "risk": "high",
-      "sideEffects": "executes",
-      "capabilities": [
-        "shell.exec"
-      ],
-      "notes": "Use for git, npm, docker, etc. Avoid for file operations (use Read/Write/Edit)."
-    },
-    {
-      "id": "Glob",
+      "toolSet": "filesystem",
+      "qualifiedName": "Glob",
+      "functionName": "Glob",
       "mention": "Glob",
-      "preferredName": "Glob",
-      "legacyName": null,
       "description": "Find files by glob pattern matching.",
       "risk": "low",
       "sideEffects": "reads",
-      "capabilities": [
-        "search.files"
-      ],
+      "parameters": {
+        "pattern": { "type": "string", "required": true },
+        "path": { "type": "string", "required": false }
+      },
       "notes": "Faster than find command. Returns paths sorted by modification time."
     },
     {
-      "id": "Grep",
+      "toolSet": "filesystem",
+      "qualifiedName": "Grep",
+      "functionName": "Grep",
       "mention": "Grep",
-      "preferredName": "Grep",
-      "legacyName": null,
       "description": "Search file contents using regular expressions (built on ripgrep).",
       "risk": "low",
       "sideEffects": "reads",
-      "capabilities": [
-        "search.text"
-      ],
-      "notes": "Supports full regex syntax. Use output_mode for different result formats."
+      "parameters": {
+        "pattern": { "type": "string", "required": true },
+        "path": { "type": "string", "required": false },
+        "glob": { "type": "string", "required": false },
+        "type": { "type": "string", "required": false },
+        "output_mode": { "type": "string", "required": false, "enum": ["content", "files_with_matches", "count"] },
+        "multiline": { "type": "boolean", "required": false },
+        "-i": { "type": "boolean", "required": false },
+        "-n": { "type": "boolean", "required": false },
+        "-A": { "type": "integer", "required": false },
+        "-B": { "type": "integer", "required": false },
+        "-C": { "type": "integer", "required": false },
+        "head_limit": { "type": "integer", "required": false },
+        "offset": { "type": "integer", "required": false }
+      },
+      "notes": "Supports full regex syntax. Use glob for file filtering, type for language types (js, py, etc.)."
     },
     {
-      "id": "WebFetch",
-      "mention": "WebFetch",
-      "preferredName": "WebFetch",
-      "legacyName": null,
-      "description": "Fetch content from a URL and process it with a prompt.",
-      "risk": "medium",
-      "sideEffects": "network",
-      "capabilities": [
-        "web.fetch"
-      ],
-      "notes": "Converts HTML to markdown. Has 15-minute cache."
-    },
-    {
-      "id": "WebSearch",
-      "mention": "WebSearch",
-      "preferredName": "WebSearch",
-      "legacyName": null,
-      "description": "Search the web and return results.",
-      "risk": "medium",
-      "sideEffects": "network",
-      "capabilities": [
-        "web.search"
-      ],
-      "notes": "Must include Sources section with URLs after answering."
-    },
-    {
-      "id": "Task",
-      "mention": "Task",
-      "preferredName": "Task",
-      "legacyName": null,
-      "description": "Launch specialized subagents for complex multi-step tasks.",
-      "risk": "medium",
-      "sideEffects": "mixed",
-      "capabilities": [
-        "agent.spawn"
-      ],
-      "notes": "Subagent types: Bash, general-purpose, Explore, Plan, etc."
-    },
-    {
-      "id": "TodoWrite",
-      "mention": "TodoWrite",
-      "preferredName": "TodoWrite",
-      "legacyName": null,
-      "description": "Create and manage a structured task list for tracking progress.",
-      "risk": "low",
-      "sideEffects": "none",
-      "capabilities": [
-        "planning.todos"
-      ],
-      "notes": "Use for complex multi-step tasks. States: pending, in_progress, completed."
-    },
-    {
-      "id": "NotebookEdit",
+      "toolSet": "filesystem",
+      "qualifiedName": "NotebookEdit",
+      "functionName": "NotebookEdit",
       "mention": "NotebookEdit",
-      "preferredName": "NotebookEdit",
-      "legacyName": null,
       "description": "Replace, insert, or delete cells in Jupyter notebooks.",
       "risk": "medium",
       "sideEffects": "writes",
-      "capabilities": [
-        "notebook.patch"
-      ],
-      "notes": "Cell numbers are 0-indexed. Supports code and markdown cells."
+      "parameters": {
+        "notebook_path": { "type": "string", "required": true },
+        "new_source": { "type": "string", "required": true },
+        "cell_id": { "type": "string", "required": false },
+        "cell_type": { "type": "string", "required": false, "enum": ["code", "markdown"] },
+        "edit_mode": { "type": "string", "required": false, "enum": ["replace", "insert", "delete"] }
+      },
+      "notes": "Use edit_mode=insert to add cells, edit_mode=delete to remove. cell_id identifies the target cell."
     },
     {
-      "id": "AskUserQuestion",
-      "mention": "AskUserQuestion",
-      "preferredName": "AskUserQuestion",
-      "legacyName": null,
-      "description": "Ask the user questions to gather preferences, clarify instructions, or get decisions.",
-      "risk": "low",
-      "sideEffects": "none",
-      "capabilities": [
-        "user.prompt"
-      ],
-      "notes": "Supports multiple choice with 2-4 options. Users can always select 'Other'."
+      "toolSet": "execution",
+      "qualifiedName": "Bash",
+      "functionName": "Bash",
+      "mention": "Bash",
+      "description": "Execute bash commands in a persistent shell session.",
+      "risk": "high",
+      "sideEffects": "executes",
+      "parameters": {
+        "command": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "timeout": { "type": "integer", "required": false },
+        "run_in_background": { "type": "boolean", "required": false }
+      },
+      "notes": "Use for git, npm, docker, etc. Avoid for file operations (use Read/Write/Edit). Working directory persists."
     },
     {
-      "id": "TaskOutput",
+      "toolSet": "execution",
+      "qualifiedName": "Task",
+      "functionName": "Task",
+      "mention": "Task",
+      "description": "Launch specialized subagents for complex multi-step tasks.",
+      "risk": "medium",
+      "sideEffects": "mixed",
+      "parameters": {
+        "description": { "type": "string", "required": true },
+        "prompt": { "type": "string", "required": true },
+        "subagent_type": { "type": "string", "required": true },
+        "model": { "type": "string", "required": false, "enum": ["sonnet", "opus", "haiku"] },
+        "run_in_background": { "type": "boolean", "required": false },
+        "resume": { "type": "string", "required": false },
+        "max_turns": { "type": "integer", "required": false }
+      },
+      "notes": "Subagent types: Bash, general-purpose, Explore, Plan, and custom agents. Use model param to control cost/latency."
+    },
+    {
+      "toolSet": "execution",
+      "qualifiedName": "TaskOutput",
+      "functionName": "TaskOutput",
       "mention": "TaskOutput",
-      "preferredName": "TaskOutput",
-      "legacyName": null,
       "description": "Retrieve output from a running or completed background task.",
       "risk": "low",
       "sideEffects": "reads",
-      "capabilities": [
-        "agent.output"
-      ],
+      "parameters": {
+        "task_id": { "type": "string", "required": true },
+        "block": { "type": "boolean", "required": false },
+        "timeout": { "type": "integer", "required": false }
+      },
       "notes": "Use block=true to wait for completion, block=false for status check."
     },
     {
-      "id": "KillShell",
-      "mention": "KillShell",
-      "preferredName": "KillShell",
-      "legacyName": null,
-      "description": "Kill a running background bash shell by its ID.",
+      "toolSet": "execution",
+      "qualifiedName": "TaskStop",
+      "functionName": "TaskStop",
+      "mention": "TaskStop",
+      "description": "Stop a running background task by its ID.",
       "risk": "low",
       "sideEffects": "executes",
-      "capabilities": [
-        "shell.kill"
-      ],
-      "notes": "Use when you need to terminate a long-running shell."
+      "parameters": {
+        "task_id": { "type": "string", "required": true },
+        "shell_id": { "type": "string", "required": false, "description": "Deprecated: use task_id instead" }
+      },
+      "notes": "Use when you need to terminate a long-running background task."
     },
     {
-      "id": "Skill",
+      "toolSet": "execution",
+      "qualifiedName": "TaskCreate",
+      "functionName": "TaskCreate",
+      "mention": "TaskCreate",
+      "description": "Create a new task in the structured task list for tracking progress.",
+      "risk": "low",
+      "sideEffects": "none",
+      "parameters": {
+        "subject": { "type": "string", "required": true },
+        "description": { "type": "string", "required": true },
+        "activeForm": { "type": "string", "required": false },
+        "metadata": { "type": "object", "required": false }
+      },
+      "notes": "Use for complex multi-step tasks. Subject is imperative form, activeForm is present continuous for spinner."
+    },
+    {
+      "toolSet": "execution",
+      "qualifiedName": "TaskUpdate",
+      "functionName": "TaskUpdate",
+      "mention": "TaskUpdate",
+      "description": "Update an existing task's status, details, or dependencies.",
+      "risk": "low",
+      "sideEffects": "none",
+      "parameters": {
+        "taskId": { "type": "string", "required": true },
+        "status": { "type": "string", "required": false, "enum": ["pending", "in_progress", "completed", "deleted"] },
+        "subject": { "type": "string", "required": false },
+        "description": { "type": "string", "required": false },
+        "activeForm": { "type": "string", "required": false },
+        "owner": { "type": "string", "required": false },
+        "metadata": { "type": "object", "required": false },
+        "addBlocks": { "type": "array", "required": false },
+        "addBlockedBy": { "type": "array", "required": false }
+      },
+      "notes": "Status workflow: pending → in_progress → completed. Use 'deleted' to permanently remove."
+    },
+    {
+      "toolSet": "execution",
+      "qualifiedName": "TaskList",
+      "functionName": "TaskList",
+      "mention": "TaskList",
+      "description": "List all tasks in the current task list with their status and dependencies.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "notes": "Returns summary of each task including id, subject, status, owner, and blockedBy dependencies."
+    },
+    {
+      "toolSet": "execution",
+      "qualifiedName": "TaskGet",
+      "functionName": "TaskGet",
+      "mention": "TaskGet",
+      "description": "Get full details of a specific task by its ID.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "parameters": {
+        "taskId": { "type": "string", "required": true }
+      },
+      "notes": "Returns complete task details including description and dependency information."
+    },
+    {
+      "toolSet": "execution",
+      "qualifiedName": "MCPSearch",
+      "functionName": "MCPSearch",
+      "mention": "MCPSearch",
+      "description": "Search for and load MCP tools when MCP tool search is enabled.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "notes": "Only available when MCP servers are configured and tool search is enabled. Discovers available MCP tools dynamically."
+    },
+    {
+      "toolSet": "web",
+      "qualifiedName": "WebFetch",
+      "functionName": "WebFetch",
+      "mention": "WebFetch",
+      "description": "Fetch content from a URL and process it with a prompt.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "parameters": {
+        "url": { "type": "string", "required": true },
+        "prompt": { "type": "string", "required": true }
+      },
+      "notes": "Converts HTML to markdown. Has 15-minute cache. Will fail for authenticated URLs."
+    },
+    {
+      "toolSet": "web",
+      "qualifiedName": "WebSearch",
+      "functionName": "WebSearch",
+      "mention": "WebSearch",
+      "description": "Search the web and return results.",
+      "risk": "medium",
+      "sideEffects": "network",
+      "parameters": {
+        "query": { "type": "string", "required": true },
+        "allowed_domains": { "type": "array", "required": false },
+        "blocked_domains": { "type": "array", "required": false }
+      },
+      "notes": "Must include Sources section with URLs after answering. Supports domain filtering."
+    },
+    {
+      "toolSet": "interaction",
+      "qualifiedName": "AskUserQuestion",
+      "functionName": "AskUserQuestion",
+      "mention": "AskUserQuestion",
+      "description": "Ask the user questions to gather preferences, clarify instructions, or get decisions.",
+      "risk": "low",
+      "sideEffects": "none",
+      "parameters": {
+        "questions": { "type": "array", "required": true, "description": "Array of question objects with question, header, options, and multiSelect" },
+        "metadata": { "type": "object", "required": false }
+      },
+      "notes": "Supports 1-4 questions with 2-4 options each. Users can always select 'Other' for custom input."
+    },
+    {
+      "toolSet": "skills",
+      "qualifiedName": "Skill",
+      "functionName": "Skill",
       "mention": "Skill",
-      "preferredName": "Skill",
-      "legacyName": null,
       "description": "Execute a skill (slash command) within the conversation.",
       "risk": "medium",
       "sideEffects": "mixed",
-      "capabilities": [
-        "skill.exec"
-      ],
-      "notes": "Used for slash commands like /commit, /review-pr."
+      "parameters": {
+        "skill": { "type": "string", "required": true },
+        "args": { "type": "string", "required": false }
+      },
+      "notes": "Used for slash commands like /commit, /review-pr. Use fully qualified name for namespaced skills."
     },
     {
-      "id": "EnterPlanMode",
+      "toolSet": "planning",
+      "qualifiedName": "EnterPlanMode",
+      "functionName": "EnterPlanMode",
       "mention": "EnterPlanMode",
-      "preferredName": "EnterPlanMode",
-      "legacyName": null,
       "description": "Transition to plan mode for designing implementation approaches.",
       "risk": "low",
       "sideEffects": "none",
-      "capabilities": [
-        "planning.enter"
-      ],
-      "notes": "Use for non-trivial implementation tasks requiring user approval."
+      "notes": "Use for non-trivial implementation tasks requiring user approval. Requires user consent. Note: Not listed in official tool table but available at runtime."
     },
     {
-      "id": "ExitPlanMode",
+      "toolSet": "code_intelligence",
+      "qualifiedName": "LSP",
+      "functionName": "LSP",
+      "mention": "LSP",
+      "description": "Code intelligence operations using Language Server Protocol.",
+      "risk": "low",
+      "sideEffects": "reads",
+      "notes": "Provides code navigation, symbols, and analysis capabilities. Only available when Claude Code is connected to an IDE with language server support."
+    },
+    {
+      "toolSet": "planning",
+      "qualifiedName": "ExitPlanMode",
+      "functionName": "ExitPlanMode",
       "mention": "ExitPlanMode",
-      "preferredName": "ExitPlanMode",
-      "legacyName": null,
       "description": "Signal plan completion and request user approval.",
       "risk": "low",
       "sideEffects": "none",
-      "capabilities": [
-        "planning.exit"
-      ],
-      "notes": "Can request bash command permissions via allowedPrompts."
+      "parameters": {
+        "allowedPrompts": { "type": "array", "required": false, "description": "Bash command permissions to request" },
+        "pushToRemote": { "type": "boolean", "required": false },
+        "remoteSessionId": { "type": "string", "required": false },
+        "remoteSessionTitle": { "type": "string", "required": false },
+        "remoteSessionUrl": { "type": "string", "required": false }
+      },
+      "notes": "Can request bash command permissions via allowedPrompts. Reads plan from previously written plan file."
     }
   ],
   "recommended": {
@@ -280,7 +431,10 @@
         "Grep",
         "WebFetch",
         "WebSearch",
-        "TodoWrite",
+        "TaskCreate",
+        "TaskUpdate",
+        "TaskList",
+        "TaskGet",
         "AskUserQuestion",
         "Task"
       ],
@@ -291,7 +445,10 @@
         "Bash",
         "Glob",
         "Grep",
-        "TodoWrite",
+        "TaskCreate",
+        "TaskUpdate",
+        "TaskList",
+        "TaskGet",
         "Task",
         "NotebookEdit"
       ]
