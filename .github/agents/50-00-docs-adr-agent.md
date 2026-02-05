@@ -1,5 +1,5 @@
 ---
-name: ADR Generator
+name: 50 Docs ADR Agent
 description: "Extract technical decisions from commits, PRs, or code changes and generate Architecture Decision Records."
 argument-hint: "Describe the changes to analyze (e.g., 'recent commits', 'last 5 commits', or paste a PR URL)"
 tools:
