@@ -62,12 +62,41 @@ COMPLEXITY_THRESHOLDS: JSON<<
 >>
 
 MAX_SNIPPETS: 10
+
+FILE_STATUS_CODES: JSON<<
+{
+  "A": "Added (new file)",
+  "M": "Modified",
+  "D": "Deleted",
+  "R": "Renamed",
+  "C": "Copied",
+  "U": "Unmerged"
+}
+>>
+
+CHANGE_TREE_EXAMPLE: TEXT<<
+src/
+├── auth/
+│   ├── M: jwt.ts                — Updated token validation logic
+│   ├── A: oauth.ts              — New OAuth2 provider integration
+│   └── M: middleware.ts         — Added rate limiting check
+├── api/
+│   └── M: routes.ts             — New /auth/refresh endpoint
+└── tests/
+    └── A: auth.test.ts          — Tests for JWT + OAuth changes
+>>
 </constants>
 <formats>
 <format id="DIFF_ANALYSIS_V1" name="Diff Analysis" purpose="Structured semantic analysis of PR diff.">
 ## Diff Analysis
 
 **Files Changed:** <FILE_COUNT> | **Additions:** +<ADDITIONS> | **Deletions:** -<DELETIONS>
+**Linked Issues:** <LINKED_ISSUES>
+
+### Change Tree
+```
+<CHANGE_TREE>
+```
 
 ### Change Categories
 | Category | Files | Components |
@@ -97,6 +126,8 @@ WHERE:
 - <FILE_COUNT> is Integer; total files changed.
 - <ADDITIONS> is Integer; lines added.
 - <DELETIONS> is Integer; lines removed.
+- <LINKED_ISSUES> is String; issue references extracted from branch name, commit messages, or diff; "Closes #42", "Refs #10"; or "none".
+- <CHANGE_TREE> is String; directory tree using FILE_STATUS_CODES prefix notation with inline comments describing the change per file. MUST follow CHANGE_TREE_EXAMPLE format. Each file line: `├── <STATUS>: <FILENAME>  — <COMMENT>`. STATUS ∈ FILE_STATUS_CODES keys. COMMENT is a short description of what changed in that file.
 - <CATEGORY_ROWS> is Markdown table rows; category, file count, affected components.
 - <KEY_CHANGES> is Markdown bullet list; 3-7 significant changes with file paths.
 - <BREAKING_CHANGES> is Markdown bullet list with checkboxes; or "None detected".
@@ -136,8 +167,11 @@ WHERE:
 <process id="main" name="Analyze diff">
 SET INPUT_TEXT := <INPUT_TEXT> (from INP)
 SET DIFF_CONTENT := <DIFF_CONTENT> (from "Agent Inference" using INPUT_TEXT)
-SET FILE_LIST := <FILE_LIST> (from "Agent Inference" using DIFF_CONTENT)
+SET NAME_STATUS := <NAME_STATUS> (from "Agent Inference" using INPUT_TEXT)
+SET FILE_LIST := <FILE_LIST> (from "Agent Inference" using DIFF_CONTENT, NAME_STATUS)
 RUN `categorize-changes`
+RUN `build-change-tree`
+RUN `extract-issues`
 RUN `detect-breaking-changes`
 RUN `scan-security`
 RUN `assess-complexity`
@@ -149,9 +183,30 @@ RETURN: format="DIFF_ANALYSIS_V1"
 FOREACH file IN FILE_LIST:
   SET FILE_CATEGORY := <CATEGORIZE_FILE> (from "Agent Inference" using file, CHANGE_CATEGORIES)
   SET FILE_ANALYSIS := <ANALYZE_FILE> (from "Agent Inference" using file, DIFF_CONTENT)
-  APPEND {path: file, category: FILE_CATEGORY, analysis: FILE_ANALYSIS} TO CATEGORIZED_FILES
+  SET FILE_STATUS := <GET_FILE_STATUS> (from "Agent Inference" using file, NAME_STATUS, FILE_STATUS_CODES)
+  APPEND {path: file, category: FILE_CATEGORY, analysis: FILE_ANALYSIS, status: FILE_STATUS} TO CATEGORIZED_FILES
 SET CATEGORY_ROWS := <BUILD_CATEGORY_TABLE> (from "Agent Inference" using CATEGORIZED_FILES)
 SET KEY_CHANGES := <EXTRACT_KEY_CHANGES> (from "Agent Inference" using CATEGORIZED_FILES)
+</process>
+
+<process id="build-change-tree" name="Build directory tree with status codes and inline comments">
+SET FILE_ENTRIES := []
+FOREACH file IN CATEGORIZED_FILES:
+  SET STATUS_CODE := file.status
+  SET COMMENT := <GENERATE_FILE_COMMENT> (from "Agent Inference" using file.path, file.analysis, DIFF_CONTENT)
+  APPEND {path: file.path, status: STATUS_CODE, comment: COMMENT} TO FILE_ENTRIES
+SET CHANGE_TREE := <RENDER_DIRECTORY_TREE> (from "Agent Inference" using FILE_ENTRIES, FILE_STATUS_CODES, CHANGE_TREE_EXAMPLE)
+</process>
+
+<process id="extract-issues" name="Extract linked issue references from diff context">
+SET BRANCH_REFS := <EXTRACT_ISSUE_REFS_FROM_BRANCH> (from "Agent Inference" using INPUT_TEXT)
+SET COMMIT_REFS := <EXTRACT_ISSUE_REFS_FROM_COMMITS> (from "Agent Inference" using INPUT_TEXT)
+SET DIFF_REFS := <EXTRACT_ISSUE_REFS_FROM_DIFF> (from "Agent Inference" using DIFF_CONTENT)
+SET ALL_REFS := <MERGE_DEDUPE> (from "Agent Inference" using BRANCH_REFS, COMMIT_REFS, DIFF_REFS)
+IF ALL_REFS is empty:
+  SET LINKED_ISSUES := "none"
+ELSE:
+  SET LINKED_ISSUES := <FORMAT_ISSUE_LINKS> (from "Agent Inference" using ALL_REFS)
 </process>
 
 <process id="detect-breaking-changes" name="Detect breaking changes">
@@ -177,6 +232,9 @@ SET SUMMARY := <SYNTHESIZE_SUMMARY> (from "Agent Inference" using CATEGORIZED_FI
 </process>
 </processes>
 <input>
-Diff content from main agent via `gh pr diff` output.
-May also include file list from `gh pr diff --name-only`.
+Diff content from main agent including:
+- Full diff output from `gh pr diff`
+- File list from `gh pr diff --name-only`
+- File status codes from `git diff --name-status` (A/M/D/R per file)
+Sections are separated by `---FILE_STATUSES---` marker.
 </input>
