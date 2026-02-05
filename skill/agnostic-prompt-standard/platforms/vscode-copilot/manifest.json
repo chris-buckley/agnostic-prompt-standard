@@ -53,7 +53,7 @@
             "pattern": "APS v{major}.{minor}.{patch} Agent"
           },
           "description": {
-            "pattern": "Generate APS v{major}.{minor}.{patch} .prompt.md files: load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
+            "pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
           }
         }
       }

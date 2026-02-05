@@ -87,7 +87,7 @@
             "pattern": "aps-v{major}-{minor}-{patch}"
           },
           "description": {
-            "pattern": "Generate APS v{major}.{minor}.{patch} subagent files: load APS+Claude Code adapter, extract intent, then generate+lint (and write if allowed)."
+            "pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+lint (and write if allowed)."
           }
         }
       }
