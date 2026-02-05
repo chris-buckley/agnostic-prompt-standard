@@ -14,6 +14,6 @@ echo "==> Installing Ruff (Python linter/formatter)..."
 pip install ruff
 
 echo "==> Setting up Husky git hooks..."
-npx husky install
+npm exec --prefix packages/aps-cli-node -- husky install
 
 echo "==> Development environment ready!"

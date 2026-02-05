@@ -26,8 +26,10 @@ Functions SHOULD either change state (Command) or return values (Query), rarely 
 You MUST check standard library and installed dependencies before creating new abstractions.
 You MUST apply defense in depth with multiple layered security controls.
 You MUST apply least privilege, sanitize all inputs/outputs, and use type-safe wrappers for secrets.
-You MUST treat structured logging, metrics, and traces as first-class concerns.
+You SHOULD treat structured logging, metrics, and traces as first-class concerns where applicable.
 You MUST design operations to handle retries safely without side effects (idempotency).
+You MUST group imports: (1) standard library, (2) third-party packages, (3) local modules.
+You MUST document all exported functions with JSDoc (TypeScript) or docstrings (Python).
 </instructions>
 
 <constants>
@@ -89,6 +91,7 @@ skill/
         format-error-v1.0.0.example.md                    Single-line error output format
         format-hierarchical-outline-v1.0.0.example.md     Multilevel numbered outline template
         format-ideation-list-v1.0.0.example.md            Structured brainstorming ideas format
+        format-link-manifest-v1.0.0.example.md            Link manifest format template
         format-markdown-table-v1.0.0.example.md           Process results table format
         format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
     platforms/
@@ -301,6 +304,25 @@ DEPS_PYTHON: JSON<<
   "terminal": "Rich",
   "prompts": "Questionary",
   "validation": "Pydantic"
+}
+>>
+
+NAMING_CONVENTIONS: JSON<<
+{
+  "typescript": {
+    "functions": "camelCase",
+    "variables": "camelCase",
+    "types": "PascalCase",
+    "interfaces": "PascalCase",
+    "constants": "SCREAMING_SNAKE_CASE"
+  },
+  "python": {
+    "functions": "snake_case",
+    "variables": "snake_case",
+    "classes": "PascalCase",
+    "constants": "SCREAMING_SNAKE_CASE"
+  },
+  "files": "kebab-case"
 }
 >>
 </constants>

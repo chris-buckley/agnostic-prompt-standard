@@ -39,9 +39,11 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
   - `formats/` — example format blocks.
     - `format-code-changes-full-v1.0.0.example.md`
     - `format-code-map-v1.0.0.example.md`
+    - `format-docs-index-v1.0.0.example.md`
     - `format-error-v1.0.0.example.md`
     - `format-hierarchical-outline-v1.0.0.example.md`
     - `format-ideation-list-v1.0.0.example.md`
+    - `format-link-manifest-v1.0.0.example.md`
     - `format-markdown-table-v1.0.0.example.md`
     - `format-table-api-coverage-v1.0.0.example.md`
 - `platforms/` — **non-normative** platform adapters (file conventions, frontmatter, tool registries, templates).

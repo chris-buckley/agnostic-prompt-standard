@@ -30,8 +30,8 @@ handoffs:
     agent: 00 TypeScript Engineer Coordinator
     prompt: "Coordinate TypeScript engineering tasks."
     send: false
-  - label: 00 TypeScript Engineer Coordinator
-    agent: 00 TypeScript Engineer Coordinator
+  - label: 00 Python Engineer Coordinator
+    agent: 00 Python Engineer Coordinator
     prompt: "Implement the plan."
     send: true
 ---

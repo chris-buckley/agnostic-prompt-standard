@@ -155,6 +155,28 @@
     },
     "notes": {
       "type": "string"
+    },
+    "detectionMarkers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File or directory patterns that indicate this platform is in use (e.g., '.claude/', '.vscode/')"
+    },
+    "agentVersioning": {
+      "type": "object",
+      "description": "Configuration for versioned agent template file naming",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Filename pattern with {VERSION} placeholder (e.g., 'aps-v{VERSION}.md')"
+        },
+        "sourceKey": {
+          "type": "string",
+          "description": "Field in SKILL.md frontmatter to read version from (e.g., 'framework_revision')"
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": false
