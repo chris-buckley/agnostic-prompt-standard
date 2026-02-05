@@ -56,12 +56,18 @@ MAX_TESTING_STEPS: 10
 ## Summary
 <SUMMARY>
 
+<LINKED_ISSUES>
+
 ## Motivation
 <MOTIVATION>
 
-<LINKED_ISSUES>
-
 ## Changes
+### Change Tree
+```
+<CHANGE_TREE>
+```
+
+### Details
 <CHANGES_LIST>
 
 ## Testing
@@ -75,9 +81,10 @@ MAX_TESTING_STEPS: 10
 <CHECKLIST>
 WHERE:
 - <SUMMARY> is String; 1-3 sentences describing what this PR does.
+- <LINKED_ISSUES> is Markdown; "Closes #X" or "Refs #Y" lines; placed immediately after summary for visibility; may be empty.
 - <MOTIVATION> is String; why this change is needed, the problem it solves.
-- <LINKED_ISSUES> is Markdown; "Closes #X" or "Refs #Y" lines; may be empty.
-- <CHANGES_LIST> is Markdown bullet list; ≤ MAX_CHANGES_LIST items.
+- <CHANGE_TREE> is String; directory tree with FILE_STATUS_CODES prefix and inline comments per file. Each file line: `├── <STATUS>: <FILENAME>  — <COMMENT>`. STATUS ∈ { A, M, D, R, C, U }.
+- <CHANGES_LIST> is Markdown bullet list; ≤ MAX_CHANGES_LIST items; detailed descriptions.
 - <TESTING_INSTRUCTIONS> is Markdown numbered list; ≤ MAX_TESTING_STEPS steps.
 - <SCREENSHOTS_SECTION> is Markdown; "## Screenshots" section if UI changes; may be empty.
 - <MIGRATION_SECTION> is Markdown; "## Migration" section if breaking changes; may be empty.
@@ -148,6 +155,7 @@ SET LINKED_ISSUES := <FORMAT_ISSUE_LINKS> (from "Agent Inference" using ISSUE_RE
 </process>
 
 <process id="generate-description" name="Generate standard PR description">
+SET CHANGE_TREE := <EXTRACT_CHANGE_TREE> (from "Agent Inference" using DIFF_ANALYSIS)
 SET CHANGES_LIST := <BUILD_CHANGES_LIST> (from "Agent Inference" using DIFF_ANALYSIS, MAX_CHANGES_LIST)
 SET HAS_UI_CHANGES := <DETECT_UI_CHANGES> (from "Agent Inference" using DIFF_ANALYSIS)
 IF HAS_UI_CHANGES:

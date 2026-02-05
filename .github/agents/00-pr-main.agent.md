@@ -117,6 +117,18 @@ GIT_BRANCH_CURRENT_CMD: "git branch --show-current"
 GIT_BRANCH_DEFAULT_CMD: "git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'"
 GIT_LOG_BRANCH_CMD: "git log <BASE>..<HEAD> --oneline"
 GIT_DIFF_STAT_CMD: "git diff <BASE>...<HEAD> --stat"
+GIT_DIFF_NAME_STATUS_CMD: "git diff --name-status <BASE>...<HEAD>"
+
+FILE_STATUS_CODES: JSON<<
+{
+  "A": "Added (new file)",
+  "M": "Modified",
+  "D": "Deleted",
+  "R": "Renamed",
+  "C": "Copied",
+  "U": "Unmerged"
+}
+>>
 
 PR_JSON_FIELDS: "number,title,state,body,labels,assignees,author,baseRefName,headRefName,isDraft,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,additions,deletions,changedFiles,url,createdAt,updatedAt"
 PR_LIST_JSON_FIELDS: "number,title,state,author,baseRefName,headRefName,isDraft,url"
@@ -525,6 +537,12 @@ WHERE:
 **Base:** <BASE_REF> ← **Head:** <HEAD_REF>
 **Author:** <AUTHOR> | **Created:** <CREATED_AT>
 **Changes:** +<ADDITIONS> / -<DELETIONS> | **Files:** <CHANGED_FILES>
+**Linked Issues:** <LINKED_ISSUES>
+
+### Change Tree
+```
+<CHANGE_TREE>
+```
 
 ### Summary
 <SUMMARY>
@@ -556,6 +574,8 @@ WHERE:
 - <ADDITIONS> is Integer.
 - <DELETIONS> is Integer.
 - <CHANGED_FILES> is Integer.
+- <LINKED_ISSUES> is String; issue references ("Closes #42", "Refs #10") or "none".
+- <CHANGE_TREE> is String; directory tree with FILE_STATUS_CODES prefix and inline comments per file. Example line: `├── M: jwt.ts  — Updated token validation logic`.
 - <SUMMARY> is String; 1-3 sentence overview.
 - <CI_STATUS> is String; summary of check statuses.
 - <REVIEW_STATUS> is String; approval state and reviewers.
@@ -584,6 +604,12 @@ WHERE:
 **Title:** <TITLE>
 **Base:** <BASE_REF> ← **Head:** <HEAD_REF>
 **Draft:** <IS_DRAFT>
+**Linked Issues:** <LINKED_ISSUES>
+
+### Change Tree
+```
+<CHANGE_TREE>
+```
 
 ### Description
 <DESCRIPTION>
@@ -594,9 +620,6 @@ WHERE:
 ### Reviewers
 <REVIEWERS>
 
-### Linked Issues
-<LINKED_ISSUES>
-
 ---
 Reply `approve` to create this PR, or provide edits.
 WHERE:
@@ -604,10 +627,11 @@ WHERE:
 - <BASE_REF> is String; target branch.
 - <HEAD_REF> is String; source branch.
 - <IS_DRAFT> ∈ { yes, no }.
+- <LINKED_ISSUES> is String; issue references ("Closes #42", "Refs #10") or "none".
+- <CHANGE_TREE> is String; directory tree with FILE_STATUS_CODES prefix and inline comments per file. Example line: `├── M: jwt.ts  — Updated token validation logic`.
 - <DESCRIPTION> is Markdown; PR body.
 - <LABELS> is String; comma-separated or "none".
 - <REVIEWERS> is String; comma-separated @handles or "none".
-- <LINKED_ISSUES> is String; issue references or "none".
 </format>
 
 <format id="CONFIRM_ACTION_V1" name="Confirm Action" purpose="Ask user to disambiguate between two possible actions.">
@@ -759,6 +783,8 @@ SET CI_STATUS := <CI_STATUS> (from "Agent Inference" using CHECKS_DATA)
 SET REVIEW_STATUS := <REVIEW_STATUS> (from "Agent Inference" using PR_DATA)
 SET RECOMMENDATIONS := <RECOMMENDATIONS> (from "Agent Inference" using PR_DATA, CHECKS_DATA, STATE, IS_DRAFT, MERGEABLE)
 SET CONTEXT_SOURCES := <CONTEXT_SOURCES> (from "Agent Inference")
+RUN `analyze-diff`
+SET LINKED_ISSUES := <EXTRACT_LINKED_ISSUES> (from "Agent Inference" using PR_DATA, DIFF_ANALYSIS)
 </process>
 
 <process id="pr-status" name="Get PR status for current branch or specified PR">
@@ -797,8 +823,13 @@ USE `run_in_terminal` where: command=GH_PR_DIFF_CMD, explanation="Get PR diff", 
 CAPTURE DIFF_OUT from `run_in_terminal`
 USE `run_in_terminal` where: command=GH_PR_DIFF_NAMES_CMD, explanation="Get changed file names", isBackground=false
 CAPTURE FILE_NAMES from `run_in_terminal`
-USE `runSubagent` where: agentName="60-00-pr-diff-analyzer", description="Analyze diff", prompt=DIFF_OUT
+USE `run_in_terminal` where: command=GIT_DIFF_NAME_STATUS_CMD, explanation="Get file change statuses (A/M/D/R)", isBackground=false
+CAPTURE NAME_STATUS_OUT from `run_in_terminal`
+SET DIFF_INPUT := <ASSEMBLE_DIFF_INPUT> (from "Agent Inference" using DIFF_OUT, FILE_NAMES, NAME_STATUS_OUT)
+USE `runSubagent` where: agentName="60-00-pr-diff-analyzer", description="Analyze diff", prompt=DIFF_INPUT
 CAPTURE DIFF_ANALYSIS from `runSubagent`
+SET CHANGE_TREE := <EXTRACT_CHANGE_TREE> (from "Agent Inference" using DIFF_ANALYSIS)
+SET LINKED_ISSUES := <EXTRACT_LINKED_ISSUES> (from "Agent Inference" using DIFF_ANALYSIS, USER_INPUT, COMMITS)
 </process>
 
 <process id="research" name="Optional codebase and history research">
