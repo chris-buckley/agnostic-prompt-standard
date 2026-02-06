@@ -8,6 +8,10 @@ Updates:
 - packages/aps-cli-py/src/aps_cli/__init__.py __version__
 - Platform agent templates (frontmatter + file names)
 
+The description frontmatter in agent templates is composed from the manifest
+pattern plus an authors suffix read from SKILL.md metadata (author, co_authors,
+repository).
+
 Usage:
     python tools/bump_version.py 1.2.3       # Update all files to 1.2.3
     python tools/bump_version.py --check     # Verify all versions match
@@ -26,10 +30,15 @@ SEMVER_RE = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 
 def get_repo_root() -> Path:
+    """Return the repository root (parent of the tools/ directory)."""
     return Path(__file__).resolve().parents[1]
 
 
+# --- Version readers ---
+
+
 def read_skill_version(skill_md: Path) -> str:
+    """Read framework_revision from SKILL.md frontmatter."""
     text = skill_md.read_text(encoding="utf-8")
     m = re.search(r'framework_revision:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?', text)
     if not m:
@@ -38,6 +47,7 @@ def read_skill_version(skill_md: Path) -> str:
 
 
 def read_node_version(pkg_json: Path) -> str:
+    """Read version from Node package.json."""
     data = json.loads(pkg_json.read_text(encoding="utf-8"))
     v = data.get("version")
     if not isinstance(v, str):
@@ -46,6 +56,7 @@ def read_node_version(pkg_json: Path) -> str:
 
 
 def read_pyproject_version(pyproject: Path) -> str:
+    """Read [project].version from pyproject.toml."""
     text = pyproject.read_text(encoding="utf-8")
     m = re.search(r'\[project\][\s\S]*?\nversion\s*=\s*"([^"]+)"', text)
     if not m:
@@ -54,6 +65,7 @@ def read_pyproject_version(pyproject: Path) -> str:
 
 
 def read_python_module_version(init_py: Path) -> str:
+    """Read __version__ from Python __init__.py."""
     text = init_py.read_text(encoding="utf-8")
     m = re.search(r'__version__\s*=\s*"([^"]+)"', text)
     if not m:
@@ -61,7 +73,11 @@ def read_python_module_version(init_py: Path) -> str:
     return m.group(1)
 
 
+# --- Version updaters ---
+
+
 def update_skill_version(skill_md: Path, new_version: str) -> None:
+    """Update framework_revision in SKILL.md frontmatter."""
     text = skill_md.read_text(encoding="utf-8")
     updated = re.sub(
         r'(framework_revision:\s*)"?[0-9]+\.[0-9]+\.[0-9]+"?',
@@ -72,12 +88,14 @@ def update_skill_version(skill_md: Path, new_version: str) -> None:
 
 
 def update_node_version(pkg_json: Path, new_version: str) -> None:
+    """Update version in Node package.json."""
     data = json.loads(pkg_json.read_text(encoding="utf-8"))
     data["version"] = new_version
     pkg_json.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def update_pyproject_version(pyproject: Path, new_version: str) -> None:
+    """Update [project].version in pyproject.toml."""
     text = pyproject.read_text(encoding="utf-8")
     updated = re.sub(
         r'(\[project\][\s\S]*?\nversion\s*=\s*)"[^"]+"',
@@ -88,6 +106,7 @@ def update_pyproject_version(pyproject: Path, new_version: str) -> None:
 
 
 def update_python_module_version(init_py: Path, new_version: str) -> None:
+    """Update __version__ in Python __init__.py."""
     text = init_py.read_text(encoding="utf-8")
     updated = re.sub(
         r'(__version__\s*=\s*)"[^"]+"',
@@ -95,6 +114,61 @@ def update_python_module_version(init_py: Path, new_version: str) -> None:
         text,
     )
     init_py.write_text(updated, encoding="utf-8")
+
+
+# --- Skill metadata (authors) ---
+
+
+def read_skill_metadata(skill_md: Path) -> dict[str, str]:
+    """Read author, co_authors, and repository from SKILL.md frontmatter.
+
+    Returns a dict with keys: author, co_authors, repository.
+    Missing fields return empty strings.
+    """
+    text = skill_md.read_text(encoding="utf-8")
+
+    result: dict[str, str] = {"author": "", "co_authors": "", "repository": ""}
+
+    m = re.search(r'^\s*author:\s*"([^"]*)"', text, flags=re.MULTILINE)
+    if m:
+        result["author"] = m.group(1).strip()
+
+    m = re.search(r'^\s*co_authors:\s*"([^"]*)"', text, flags=re.MULTILINE)
+    if m:
+        result["co_authors"] = m.group(1).strip()
+
+    m = re.search(r'^\s*repository:\s*"([^"]*)"', text, flags=re.MULTILINE)
+    if m:
+        result["repository"] = m.group(1).strip()
+
+    return result
+
+
+def build_authors_suffix(metadata: dict[str, str]) -> str:
+    """Compose the authors/URL suffix for agent description frontmatter.
+
+    Given metadata with author, co_authors, and repository, produces a string
+    like: "Author: Alice. Co-authors: Bob, Carol. URL: https://..."
+
+    Returns empty string if no author is set.
+    """
+    parts: list[str] = []
+
+    author = metadata.get("author", "")
+    if author:
+        parts.append(f"Author: {author}.")
+
+    co_authors = metadata.get("co_authors", "")
+    if co_authors:
+        # SKILL.md uses semicolons; descriptions use commas
+        names = ", ".join(name.strip() for name in co_authors.split(";") if name.strip())
+        parts.append(f"Co-authors: {names}.")
+
+    repository = metadata.get("repository", "")
+    if repository:
+        parts.append(f"URL: {repository}")
+
+    return " ".join(parts)
 
 
 # --- Platform agent versioning ---
@@ -152,9 +226,19 @@ def find_existing_agent_file(platform_dir: Path, template_config: dict[str, Any]
 
 
 def update_agent_frontmatter(
-    file_path: Path, frontmatter_config: dict[str, Any], major: str, minor: str, patch: str
+    file_path: Path,
+    frontmatter_config: dict[str, Any],
+    major: str,
+    minor: str,
+    patch: str,
+    authors_suffix: str = "",
 ) -> bool:
-    """Update frontmatter fields in an agent file based on platform config."""
+    """Update frontmatter fields in an agent file based on platform config.
+
+    For ``description`` fields, the expanded pattern is joined with the
+    *authors_suffix* (read from SKILL.md) so author metadata is preserved
+    across version bumps.
+    """
     if not file_path.exists():
         return False
 
@@ -165,6 +249,10 @@ def update_agent_frontmatter(
         if "pattern" not in config:
             continue
         new_value = expand_version_pattern(config["pattern"], major, minor, patch)
+
+        # For description fields, append the authors suffix
+        if field == "description" and authors_suffix:
+            new_value = f"{new_value} {authors_suffix}"
 
         # Match YAML frontmatter field with quoted value
         pattern_quoted = rf'^({field}:\s*)"[^"]*"'
@@ -199,8 +287,14 @@ def rename_agent_file(
     return source_path
 
 
-def update_platform_agents(platforms_dir: Path, new_version: str) -> list[str]:
-    """Update all platform agent templates with new version."""
+def update_platform_agents(
+    platforms_dir: Path, new_version: str, authors_suffix: str = ""
+) -> list[str]:
+    """Update all platform agent templates with new version.
+
+    The *authors_suffix* is appended to description fields so author metadata
+    from SKILL.md is carried through across bumps.
+    """
     match = SEMVER_RE.match(new_version)
     if not match:
         return []
@@ -221,9 +315,9 @@ def update_platform_agents(platforms_dir: Path, new_version: str) -> list[str]:
                 print(f"  Warning: No agent file found for {platform_id}", file=sys.stderr)
                 continue
 
-            # Update frontmatter
+            # Update frontmatter (with authors suffix for descriptions)
             frontmatter_updated = update_agent_frontmatter(
-                source_path, frontmatter_config, major, minor, patch
+                source_path, frontmatter_config, major, minor, patch, authors_suffix
             )
 
             # Rename file if path pattern includes version
@@ -238,6 +332,7 @@ def update_platform_agents(platforms_dir: Path, new_version: str) -> list[str]:
 
 
 def main() -> int:
+    """CLI entrypoint: update or check APS version across all sources."""
     ap = argparse.ArgumentParser(description="Update or check APS version")
     ap.add_argument("version", nargs="?", help="New version (e.g., 1.2.3)")
     ap.add_argument("--check", action="store_true", help="Check that all versions match")
@@ -289,8 +384,12 @@ def main() -> int:
     print(f"  - {pyproject}")
     print(f"  - {init_py}")
 
+    # Read authors metadata from SKILL.md and compose suffix
+    metadata = read_skill_metadata(skill_md)
+    authors_suffix = build_authors_suffix(metadata)
+
     # Update platform agent templates
-    agent_updates = update_platform_agents(platforms_dir, new_version)
+    agent_updates = update_platform_agents(platforms_dir, new_version, authors_suffix)
     if agent_updates:
         print("\nPlatform agent templates updated:")
         for f in agent_updates:
