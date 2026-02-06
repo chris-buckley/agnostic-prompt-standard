@@ -47,13 +47,13 @@
     "templates": [
       {
         "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-        "currentPath": "templates/.github/agents/aps-v1.1.7.agent.md",
+        "currentPath": "templates/.github/agents/aps-v1.1.8.agent.md",
         "frontmatter": {
           "name": {
             "pattern": "APS v{major}.{minor}.{patch} Agent"
           },
           "description": {
-            "pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+lint (and write if allowed)."
+            "pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+write+lint."
           }
         }
       }

@@ -81,13 +81,13 @@
     "templates": [
       {
         "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-        "currentPath": "templates/.claude/agents/aps-v1.1.7.md",
+        "currentPath": "templates/.claude/agents/aps-v1.1.8.md",
         "frontmatter": {
           "name": {
             "pattern": "aps-v{major}-{minor}-{patch}"
           },
           "description": {
-            "pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+lint (and write if allowed)."
+            "pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint."
           }
         }
       }
