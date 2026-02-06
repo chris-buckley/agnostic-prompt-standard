@@ -12,11 +12,13 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 from bump_version import (
+    build_authors_suffix,
     expand_version_pattern,
-    load_platform_manifests,
     find_existing_agent_file,
-    update_agent_frontmatter,
+    load_platform_manifests,
+    read_skill_metadata,
     rename_agent_file,
+    update_agent_frontmatter,
     update_platform_agents,
     SEMVER_RE,
 )
@@ -130,6 +132,97 @@ class TestFindExistingAgentFile(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class TestReadSkillMetadata(unittest.TestCase):
+    """Tests for read_skill_metadata function."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_reads_all_fields(self):
+        skill_md = self.temp_path / "SKILL.md"
+        skill_md.write_text(
+            '---\nmetadata:\n'
+            '  repository: "https://github.com/example/repo"\n'
+            '  author: "Alice"\n'
+            '  co_authors: "Bob; Carol"\n'
+            '---\n'
+        )
+        result = read_skill_metadata(skill_md)
+        self.assertEqual(result["author"], "Alice")
+        self.assertEqual(result["co_authors"], "Bob; Carol")
+        self.assertEqual(result["repository"], "https://github.com/example/repo")
+
+    def test_returns_empty_for_missing_fields(self):
+        skill_md = self.temp_path / "SKILL.md"
+        skill_md.write_text('---\nmetadata:\n  spec_version: "1.0"\n---\n')
+        result = read_skill_metadata(skill_md)
+        self.assertEqual(result["author"], "")
+        self.assertEqual(result["co_authors"], "")
+        self.assertEqual(result["repository"], "")
+
+    def test_handles_author_only(self):
+        skill_md = self.temp_path / "SKILL.md"
+        skill_md.write_text('---\nmetadata:\n  author: "Solo Dev"\n---\n')
+        result = read_skill_metadata(skill_md)
+        self.assertEqual(result["author"], "Solo Dev")
+        self.assertEqual(result["co_authors"], "")
+
+    def test_strips_whitespace(self):
+        skill_md = self.temp_path / "SKILL.md"
+        skill_md.write_text('---\nmetadata:\n  author: "  Spaced  "\n---\n')
+        result = read_skill_metadata(skill_md)
+        self.assertEqual(result["author"], "Spaced")
+
+
+class TestBuildAuthorsSuffix(unittest.TestCase):
+    """Tests for build_authors_suffix function."""
+
+    def test_full_suffix(self):
+        metadata = {
+            "author": "Alice",
+            "co_authors": "Bob; Carol",
+            "repository": "https://github.com/example/repo",
+        }
+        result = build_authors_suffix(metadata)
+        self.assertEqual(
+            result,
+            "Author: Alice. Co-authors: Bob, Carol. URL: https://github.com/example/repo",
+        )
+
+    def test_author_only(self):
+        metadata = {"author": "Alice", "co_authors": "", "repository": ""}
+        result = build_authors_suffix(metadata)
+        self.assertEqual(result, "Author: Alice.")
+
+    def test_no_co_authors(self):
+        metadata = {
+            "author": "Alice",
+            "co_authors": "",
+            "repository": "https://github.com/example/repo",
+        }
+        result = build_authors_suffix(metadata)
+        self.assertEqual(result, "Author: Alice. URL: https://github.com/example/repo")
+
+    def test_empty_metadata(self):
+        metadata = {"author": "", "co_authors": "", "repository": ""}
+        result = build_authors_suffix(metadata)
+        self.assertEqual(result, "")
+
+    def test_semicolons_become_commas(self):
+        metadata = {"author": "A", "co_authors": "B; C; D", "repository": ""}
+        result = build_authors_suffix(metadata)
+        self.assertEqual(result, "Author: A. Co-authors: B, C, D.")
+
+    def test_single_co_author(self):
+        metadata = {"author": "A", "co_authors": "B", "repository": ""}
+        result = build_authors_suffix(metadata)
+        self.assertEqual(result, "Author: A. Co-authors: B.")
+
+
 class TestUpdateAgentFrontmatter(unittest.TestCase):
     """Tests for update_agent_frontmatter function."""
 
@@ -191,6 +284,61 @@ class TestUpdateAgentFrontmatter(unittest.TestCase):
         
         # Should return False since content didn't change
         self.assertFalse(result)
+
+    def test_appends_authors_suffix_to_description(self):
+        agent_file = self.temp_path / "agent.md"
+        agent_file.write_text(
+            '---\nname: "Old"\n'
+            'description: "Generate APS v1.0.0 files. Author: Alice. Co-authors: Bob. URL: https://example.com"\n'
+            '---\nContent'
+        )
+
+        config = {
+            "name": {"pattern": "APS v{major}.{minor}.{patch}"},
+            "description": {"pattern": "Generate APS v{major}.{minor}.{patch} files."},
+        }
+        suffix = "Author: Alice. Co-authors: Bob. URL: https://example.com"
+        result = update_agent_frontmatter(agent_file, config, "2", "0", "0", authors_suffix=suffix)
+
+        self.assertTrue(result)
+        content = agent_file.read_text()
+        self.assertIn('name: "APS v2.0.0"', content)
+        self.assertIn(
+            'description: "Generate APS v2.0.0 files. Author: Alice. Co-authors: Bob. URL: https://example.com"',
+            content,
+        )
+
+    def test_description_without_suffix_when_empty(self):
+        agent_file = self.temp_path / "agent.md"
+        agent_file.write_text('---\ndescription: "Old desc"\n---\nContent')
+
+        config = {"description": {"pattern": "Generate APS v{major}.{minor}.{patch} files."}}
+        result = update_agent_frontmatter(agent_file, config, "1", "2", "3", authors_suffix="")
+
+        self.assertTrue(result)
+        content = agent_file.read_text()
+        self.assertIn('description: "Generate APS v1.2.3 files."', content)
+        # No trailing space or suffix
+        self.assertNotIn("Author:", content)
+
+    def test_suffix_only_applied_to_description_not_name(self):
+        agent_file = self.temp_path / "agent.md"
+        agent_file.write_text('---\nname: "Old"\ndescription: "Old desc"\n---\nContent')
+
+        config = {
+            "name": {"pattern": "APS v{major}.{minor}.{patch}"},
+            "description": {"pattern": "Generate v{major}.{minor}.{patch}."},
+        }
+        suffix = "Author: Alice."
+        result = update_agent_frontmatter(agent_file, config, "3", "0", "0", authors_suffix=suffix)
+
+        self.assertTrue(result)
+        content = agent_file.read_text()
+        # Suffix should NOT appear in name
+        self.assertIn('name: "APS v3.0.0"', content)
+        self.assertNotIn('name: "APS v3.0.0 Author:', content)
+        # Suffix SHOULD appear in description
+        self.assertIn('description: "Generate v3.0.0. Author: Alice."', content)
 
 
 class TestRenameAgentFile(unittest.TestCase):
@@ -359,6 +507,46 @@ class TestUpdatePlatformAgents(unittest.TestCase):
         new_file = templates_dir / "agent-v2.0.0.md"
         self.assertTrue(new_file.exists())
         self.assertFalse(agent_file.exists())  # Old file should be gone
+
+    def test_appends_authors_suffix_to_description(self):
+        """End-to-end: authors suffix is appended to description during bump."""
+        platform_dir = self.platforms_dir / "test-platform"
+        templates_dir = platform_dir / "templates"
+        templates_dir.mkdir(parents=True)
+
+        agent_file = templates_dir / "agent-v1.0.0.md"
+        agent_file.write_text(
+            '---\n'
+            'name: "v1.0.0"\n'
+            'description: "Generate v1.0.0 files. Author: Alice. URL: https://example.com"\n'
+            '---\nContent'
+        )
+
+        manifest = {
+            "platformId": "test",
+            "agentVersioning": {
+                "templates": [{
+                    "path": "templates/agent-v{major}.{minor}.{patch}.md",
+                    "currentPath": "templates/agent.md",
+                    "frontmatter": {
+                        "name": {"pattern": "v{major}.{minor}.{patch}"},
+                        "description": {"pattern": "Generate v{major}.{minor}.{patch} files."},
+                    }
+                }]
+            }
+        }
+        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
+
+        suffix = "Author: Alice. URL: https://example.com"
+        result = update_platform_agents(self.platforms_dir, "2.0.0", authors_suffix=suffix)
+
+        new_file = templates_dir / "agent-v2.0.0.md"
+        self.assertTrue(new_file.exists())
+        content = new_file.read_text()
+        self.assertIn(
+            'description: "Generate v2.0.0 files. Author: Alice. URL: https://example.com"',
+            content,
+        )
 
 
 class TestSemverRegex(unittest.TestCase):
