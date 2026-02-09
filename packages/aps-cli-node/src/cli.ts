@@ -1,6 +1,7 @@
-import { Command } from 'commander';
 import { createRequire } from 'node:module';
 import process from 'node:process';
+
+import { Command } from 'commander';
 
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';

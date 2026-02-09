@@ -232,6 +232,7 @@ function renderPlan(plan: InitPlan, opts: { force: boolean }): string {
   return lines.join('\n');
 }
 
+/** Returns a user-facing warning when no platform adapters are selected during init. */
 export function renderEmptyPlatformWarning(): string {
   return 'Note: No platform adapters selected. Only the APS skill will be installed.\n      Templates will not be copied. Use --platform <id> to include platform templates.';
 }
