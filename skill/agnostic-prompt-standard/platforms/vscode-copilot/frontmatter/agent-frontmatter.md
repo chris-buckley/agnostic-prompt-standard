@@ -80,19 +80,21 @@ VS Code Copilot uses a **three-tier tool naming system**:
 
 ### Using Tool Sets vs Individual Tools
 
-**Include entire tool set** — use the set name:
-```yaml
-tools:
-  - execute    # Includes all: runInTerminal, getTerminalOutput, runTask, etc.
-  - search     # Includes all: codebase, fileSearch, textSearch, etc.
-```
-
-**Include specific tools** — use qualified names:
+**Include specific tools (recommended)** — use qualified names:
+Default to individual (qualified) tool names to minimize injected tokens. Use toolset names only when ALL tools in the set are genuinely needed.
 ```yaml
 tools:
   - execute/runInTerminal
   - execute/getTerminalOutput
   - search/codebase
+```
+
+**Include entire tool set** — use the set name:
+Toolset names expand to every tool in the set, which increases injected tokens. Only use when the agent genuinely needs all tools in the set.
+```yaml
+tools:
+  - execute    # Includes all: runInTerminal, getTerminalOutput, runTask, etc.
+  - search     # Includes all: codebase, fileSearch, textSearch, etc.
 ```
 
 **Mixed approach**:
