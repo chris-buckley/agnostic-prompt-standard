@@ -323,6 +323,15 @@ def update_platform_agents(
             # Rename file if path pattern includes version
             new_path = rename_agent_file(platform_dir, template, source_path, major, minor, patch)
 
+            # Update currentPath in manifest so next bump finds the file
+            if new_path and new_path != source_path:
+                new_rel = str(new_path.relative_to(platform_dir)).replace("\\", "/")
+                template["currentPath"] = new_rel
+                manifest_path = platform_dir / "manifest.json"
+                manifest_path.write_text(
+                    json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+                )
+
             if new_path:
                 updated_files.append(str(new_path))
             elif frontmatter_updated:
