@@ -15,7 +15,7 @@ errors:
     - { code: AG-007, name: BadJSON, desc: Invalid JSON value or pair. }
     - { code: AG-008, name: CaptureMissing, desc: CAPTURE references unknown/never-executed tool. }
     - { code: AG-009, name: TagMismatch, desc: Unbalanced or wrong closing tag. }
-    - { code: AG-010, name: CommentDetected, desc: Comment present in executable blocks. }
+    - { code: AG-010, name: CommentDetected, desc: Comment present in any section. }
     - { code: AG-011, name: TabDetected, desc: Tab characters present. }
     - { code: AG-012, name: KeyOrder, desc: Keys in where: not lexicographic. }
     - { code: AG-013, name: DuplicateSymbol, desc: Symbol redefined with incompatible type/origin. }
@@ -48,7 +48,7 @@ errors:
     - { code: AG-043, name: PlaceholderStyleError, desc: Placeholder not in <UPPER_SNAKE> form or not wrapped in angle brackets. }
     - { code: AG-044, name: ProcessArgsMismatch, desc: RUN statement arguments do not match the target process signature (missing, extra, or type-incompatible arguments). }
     - { code: AG-045, name: BlockConstantUnterminated, desc: Block constant missing closing delimiter line >>. }
-    - { code: AG-046, name: BlockConstantTypeUnknown, desc: Block constant uses unknown <BLOCK_TYPE>; expected JSON or TEXT. }
+    - { code: AG-046, name: BlockConstantTypeUnknown, desc: Block constant uses unknown <BLOCK_TYPE>; expected JSON, TEXT, or YAML. }
 
   warnings:
     - { code: AG-W01, name: SymbolNotUsed, desc: Defined but never used. }
