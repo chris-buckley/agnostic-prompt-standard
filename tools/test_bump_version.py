@@ -508,6 +508,37 @@ class TestUpdatePlatformAgents(unittest.TestCase):
         self.assertTrue(new_file.exists())
         self.assertFalse(agent_file.exists())  # Old file should be gone
 
+    def test_updates_manifest_currentPath_after_rename(self):
+        """Verify currentPath in manifest.json is updated after file rename."""
+        platform_dir = self.platforms_dir / "test-platform"
+        templates_dir = platform_dir / "templates"
+        templates_dir.mkdir(parents=True)
+
+        # Stale currentPath pointing to old version
+        agent_file = templates_dir / "agent-v1.0.0.md"
+        agent_file.write_text('---\nname: "v1.0.0"\n---\nContent')
+
+        manifest = {
+            "platformId": "test",
+            "agentVersioning": {
+                "templates": [{
+                    "path": "templates/agent-v{major}.{minor}.{patch}.md",
+                    "currentPath": "templates/agent-v0.9.0.md",
+                    "frontmatter": {"name": {"pattern": "v{major}.{minor}.{patch}"}}
+                }]
+            }
+        }
+        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
+
+        update_platform_agents(self.platforms_dir, "2.0.0")
+
+        # Verify manifest was rewritten with updated currentPath
+        updated_manifest = json.loads(
+            (platform_dir / "manifest.json").read_text(encoding="utf-8")
+        )
+        current_path = updated_manifest["agentVersioning"]["templates"][0]["currentPath"]
+        self.assertEqual(current_path, "templates/agent-v2.0.0.md")
+
     def test_appends_authors_suffix_to_description(self):
         """End-to-end: authors suffix is appended to description during bump."""
         platform_dir = self.platforms_dir / "test-platform"

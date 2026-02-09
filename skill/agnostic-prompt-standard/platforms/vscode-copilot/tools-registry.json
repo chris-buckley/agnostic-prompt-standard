@@ -497,8 +497,8 @@
   ],
   "recommended": {
     "aps": {
-      "planner": ["search", "read", "todo", "web"],
-      "implementer": ["search", "read", "edit", "execute", "todo", "web", "agent"]
+      "planner": ["search/codebase", "search/fileSearch", "search/textSearch", "search/changes", "search/usages", "read/readFile", "read/problems", "todo", "web/fetch", "web/githubRepo"],
+      "implementer": ["search/codebase", "search/fileSearch", "search/textSearch", "read/readFile", "read/listDir", "read/problems", "edit/createDirectory", "edit/createFile", "edit/editFiles", "execute/runInTerminal", "execute/getTerminalOutput", "execute/runTests", "todo", "web/fetch", "web/githubRepo", "agent/runSubagent"]
     }
   }
 }

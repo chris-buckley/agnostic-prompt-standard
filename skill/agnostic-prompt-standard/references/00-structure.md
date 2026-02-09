@@ -33,10 +33,13 @@ prompt_sections:
 ### General rules
 
 - Each top-level section MUST appear **at most once**.
-- The `<triggers>` and `<processes>` sections are **executable**. Comments are forbidden inside
-  these sections (see **02 Linting and formatting**).
+- The `<triggers>` and `<processes>` sections are **executable**.
+- Comments (`//`) are forbidden in all sections (see **02 Linting and formatting**).
 - `<constants>` are **read-only** and MUST be resolved before any tool invocation.
 - `<constants>` take precedence over `<runtime>` if the same symbol is defined in both.
+- Engines SHOULD raise an error or warning when a symbol is defined in both `<constants>` and
+  `<runtime>`, as this indicates a prompt authoring mistake. If both exist, `<constants>` takes
+  precedence.
 
 ## `<constants>` section
 
@@ -47,7 +50,7 @@ Constants MUST use one of the following forms:
 1. Inline constant: `SYMBOL: VALUE` where `VALUE` is `String | Number | Boolean | JSON`.
 2. Block constant: `SYMBOL: <BLOCK_TYPE><<` then BODY lines then a closing delimiter line `>>`.
 
-`<BLOCK_TYPE>` MUST be one of: `JSON`, `TEXT`.
+`<BLOCK_TYPE>` MUST be one of: `JSON`, `TEXT`, `YAML`.
 
 Block constant opening lines MUST:
 
@@ -58,6 +61,7 @@ Valid openers:
 
 - `SYMBOL: JSON<<`
 - `SYMBOL: TEXT<<`
+- `SYMBOL: YAML<<`
 
 Block constant closing delimiter MUST be a line whose content is exactly `>>` starting at column 1
 (no leading/trailing whitespace).
@@ -77,6 +81,19 @@ Block constant closing delimiter MUST be a line whose content is exactly `>>` st
 - BODY is the exact text between the newline after the opening line and the newline before the
   closing delimiter line.
 - Leading/trailing whitespace inside BODY is significant.
+
+### YAML block constants
+
+- BODY MUST parse as valid YAML.
+- Any `UpperSym` that appears inside a YAML block constant BODY MUST resolve from `<constants>`
+  before execution; unresolved → `AG-006`.
+- Engines MUST compile YAML block constants to canonical YAML with lexicographic key ordering and
+  consistent indentation (see **02 Linting and formatting**).
+
+### Block type selection guidance
+
+Prefer YAML blocks for structured data unless JSON has a specific advantage (e.g., the constant
+represents an actual JSON payload or JSON Schema).
 
 ## `<processes>` section
 

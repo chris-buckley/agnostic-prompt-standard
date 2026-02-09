@@ -240,7 +240,8 @@ Skill Installation Paths:
 Default paths for installed skills:
 - Project: .github/skills/agnostic-prompt-standard/
 - Personal: ~/.copilot/skills/agnostic-prompt-standard/
-- Claude Code (with --platform claude-code): .claude/skills/ instead
+- Claude Code project (with --platform claude-code): .claude/skills/agnostic-prompt-standard/
+- Claude Code personal (with --platform claude-code): ~/.claude/skills/agnostic-prompt-standard/
 >>
 
 TESTING_COMMANDS: TEXT<<
@@ -314,13 +315,15 @@ NAMING_CONVENTIONS: JSON<<
     "variables": "camelCase",
     "types": "PascalCase",
     "interfaces": "PascalCase",
-    "constants": "SCREAMING_SNAKE_CASE"
+    "constants": "SCREAMING_SNAKE_CASE",
+    "schema_objects": "PascalCase (Zod convention)"
   },
   "python": {
     "functions": "snake_case",
     "variables": "snake_case",
     "classes": "PascalCase",
-    "constants": "SCREAMING_SNAKE_CASE"
+    "constants": "SCREAMING_SNAKE_CASE",
+    "schema_objects": "PascalCase (Pydantic convention)"
   },
   "files": "kebab-case"
 }

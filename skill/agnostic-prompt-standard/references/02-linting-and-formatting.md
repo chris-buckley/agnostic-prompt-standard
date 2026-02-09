@@ -20,19 +20,8 @@ This applies to top-level sections (`<instructions>`, `<constants>`, `<formats>`
 
 ## Comments
 
-Comments are denoted by `//` at the start of the line and are for explanatory purposes only.
-
-### Comment stripping
-
-If an engine implements comment stripping, it MUST:
-
-- Remove any full line whose first two non-whitespace characters are `//`.
-- NOT strip comments inside block constant bodies (see below).
-
-### Where comments are forbidden
-
-- Comments are forbidden inside **executable blocks**: `<triggers>` and `<processes>` (including
-  inside each `<process>` body). A detected comment in an executable block MUST raise `AG-010`.
+Comments (`//`) are forbidden in all sections of a conforming prompt. Any line whose first two
+non-whitespace characters are `//` MUST raise `AG-010`.
 
 ## Unicode and quotes
 
@@ -51,6 +40,20 @@ Engines that compile or canonicalize JSON MUST emit **canonical JSON** using the
 
 Source form inside JSON block constants MAY contain arbitrary newlines/indentation, but engines
 MUST parse and re-emit canonical JSON at compile time.
+
+## Canonical YAML formatting
+
+Engines that compile or canonicalize YAML MUST emit **canonical YAML** using the rules below:
+
+- Keys in mappings MUST be in lexicographic order.
+- Indentation MUST use exactly two ASCII spaces per nesting level.
+- No trailing whitespace on any line.
+- Strings MUST only be quoted when required by YAML syntax (e.g., values containing `:`, `#`, or
+  leading/trailing whitespace).
+- Empty mappings are `{}` and empty sequences are `[]`.
+
+Source form inside YAML block constants MAY contain arbitrary formatting, but engines MUST parse
+and re-emit canonical YAML at compile time.
 
 ## `where:` key ordering
 
@@ -78,11 +81,10 @@ Block constants are allowed only inside `<constants>` (see **00 Structure**).
 
 Rules:
 
-- Block constant opening line MUST be `SYMBOL: JSON<<` or `SYMBOL: TEXT<<` (exactly one ASCII space
-  after `:`).
+- Block constant opening line MUST be `SYMBOL: JSON<<`, `SYMBOL: TEXT<<`, or `SYMBOL: YAML<<`
+  (exactly one ASCII space after `:`).
 - Block constant BODY is line-oriented and terminates at the first line whose content is exactly
   `>>` starting at column 1.
-- Comment stripping (`//`) MUST NOT apply inside block constant BODY.
 - Unknown `<BLOCK_TYPE>` → `AG-046`.
 - Missing closing delimiter `>>` → `AG-045`.
 

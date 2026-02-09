@@ -22,7 +22,7 @@ Number        = "-"? Digit, { Digit }, [ ".", Digit, { Digit } ] ;
 String        = "\"", { <any char except " or \"> | "\\\"" | "\\\\" }, "\"" ;
 EnumLit       = "enum(", UpperSym, { ",", UpperSym }, ")" ;
 
-BlockType     = "JSON" | "TEXT" ;
+BlockType     = "JSON" | "TEXT" | "YAML" ;
 BlockOpen     = UpperSym, ":", Space, BlockType, "<<", EOL ;
 BlockClose    = ">>" ;
 BlockValue    = BlockType, "<<", EOL, { <any line except BlockClose>, EOL }, BlockClose ;
