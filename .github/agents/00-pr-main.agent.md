@@ -1,5 +1,5 @@
 ---
-name: 00 PR Main
+name: Pull Requests
 description: "MAIN: Orchestrates GitHub PR create/update/review/comment/merge/close/reopen. Runs gh CLI. Delegates diff analysis, drafting, review, and merge checks to subagents."
 argument-hint: "Paste branch name, PR reference, or describe what you want to do."
 tools:
@@ -8,7 +8,9 @@ tools:
   - edit/createFile
   - todo
   - agent
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
+user-invokable: true
+disable-model-invocation: true
 handoffs:
   - label: Analyze Diff
     agent: 60-00 PR Diff Analyzer

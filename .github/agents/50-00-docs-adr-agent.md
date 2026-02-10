@@ -1,5 +1,5 @@
 ---
-name: 50 Docs ADR Agent
+name: ADR
 description: "Extract technical decisions from commits, PRs, or code changes and generate Architecture Decision Records."
 argument-hint: "Describe the changes to analyze (e.g., 'recent commits', 'last 5 commits', or paste a PR URL)"
 tools:
@@ -9,8 +9,9 @@ tools:
   - execute/getTerminalOutput
   - web/fetch
   - web/githubRepo
-model: Claude Sonnet 4 (copilot)
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: true
+disable-model-invocation: true
 target: vscode
 ---
 

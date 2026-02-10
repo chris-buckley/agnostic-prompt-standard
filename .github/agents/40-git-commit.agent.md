@@ -1,9 +1,11 @@
 ---
-name: 40 Git Commit Agent
+name: Commit
 description: "Analyzes changes, groups semantically, and creates well-structured conventional commits with preview and confirmation."
 tools:
   ['execute/runInTerminal', 'read/problems', 'read/readFile', 'search', 'todo']
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: true
+disable-model-invocation: true
 target: vscode
 ---
 
