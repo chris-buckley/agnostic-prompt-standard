@@ -5,8 +5,9 @@ argument-hint: "Internal only."
 tools:
   - read/readFile
   - search/fileSearch
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Template Matcher subagent.

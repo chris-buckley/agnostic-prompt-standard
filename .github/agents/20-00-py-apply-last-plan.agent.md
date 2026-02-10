@@ -2,10 +2,11 @@
 name: 20-00 Python Apply Last Plan
 description: "Apply an approved plan with minimal atomic edits and without running validations."
 tools: ["search", "read", "edit"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Provide approved plan text and apply it.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

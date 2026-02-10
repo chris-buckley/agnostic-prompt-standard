@@ -3,8 +3,9 @@ name: 60-03 PR Comment Drafter
 description: "SUBAGENT: Drafts contextual PR comments for general discussion, status updates, or responses."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Comment Drafter subagent.

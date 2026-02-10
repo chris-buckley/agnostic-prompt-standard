@@ -2,10 +2,11 @@
 name: 20-03 Python Derive Repo Profile
 description: "Derive repo tooling profile (formatter, linter, type checker, pre-commit, dependency manager) from repository files."
 tools: ["read"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Use after gathering context.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

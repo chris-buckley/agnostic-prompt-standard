@@ -4,8 +4,9 @@ description: "SUBAGENT: Performs automated code review. Analyzes code quality, c
 argument-hint: "Internal only."
 tools:
   - read/readFile
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Reviewer subagent.

@@ -3,8 +3,9 @@ name: 60-06 PR Triager
 description: "SUBAGENT: Extracts action, PR ref, branch info, and research needs from a request. Emits a single triage block."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Triager subagent.

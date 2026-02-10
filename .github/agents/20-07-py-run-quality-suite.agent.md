@@ -2,10 +2,11 @@
 name: 20-07 Python Run Quality Suite
 description: "Run full repo-aligned quality suite including security scan and coverage when available."
 tools: ["read", "execute"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Run lint, format, types, security, and tests with coverage.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

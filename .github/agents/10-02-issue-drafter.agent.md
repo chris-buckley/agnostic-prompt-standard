@@ -3,8 +3,9 @@ name: 10-02 Issue Drafter
 description: "SUBAGENT: Pure text transformation for GitHub issues. Analyzes inputs, drafts content, merges updates. Holds all format definitions. No tools, no user interaction."
 argument-hint: "Provide instruction (Analyze/Generate/Merge) with context."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the Issue Drafter subagent.

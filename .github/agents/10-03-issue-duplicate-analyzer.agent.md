@@ -3,8 +3,9 @@ name: 10-03 Issue Duplicate Analyzer
 description: "SUBAGENT: Finds likely duplicates/related issues given candidate issue summaries from the main agent."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are a subagent.

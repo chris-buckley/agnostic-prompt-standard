@@ -3,8 +3,9 @@ name: 10-01 Issue Comment Drafter
 description: "SUBAGENT: Drafts a GitHub issue comment or update note using existing issue context and new info."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are a subagent.

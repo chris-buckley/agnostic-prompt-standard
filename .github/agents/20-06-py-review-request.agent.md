@@ -2,10 +2,11 @@
 name: 20-06 Python Review Request
 description: "Compile a code review from apply + validation outputs or do a standalone review of changes."
 tools: ["search/changes", "search/usages", "read"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Review a PR/change set or compile review from prior outputs.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

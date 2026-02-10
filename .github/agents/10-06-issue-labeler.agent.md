@@ -3,8 +3,9 @@ name: 10-06 Issue Labeler
 description: "SUBAGENT: Suggests labels, assignees, and milestones from issue context without repo mutations."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are a subagent.
