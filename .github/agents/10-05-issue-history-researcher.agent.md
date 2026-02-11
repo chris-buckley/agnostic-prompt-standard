@@ -4,8 +4,9 @@ description: "SUBAGENT: Searches existing GitHub issues, PRs, and commits to fin
 argument-hint: "Provide search query, issue context, and optional file paths for pickaxe search."
 tools:
   - execute/runInTerminal
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the History Researcher subagent.

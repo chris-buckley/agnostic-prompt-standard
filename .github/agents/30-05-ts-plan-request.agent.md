@@ -2,10 +2,11 @@
 name: 30-05 TypeScript Plan Request
 description: "Produce a repo-aware implementation plan without making changes."
 tools: []
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Provide task + context + repo profile + mode.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

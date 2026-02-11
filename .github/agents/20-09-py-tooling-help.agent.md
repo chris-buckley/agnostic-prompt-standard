@@ -2,10 +2,11 @@
 name: 20-09 Python Tooling Help
 description: "Explain tool enablement and how to run validation/tests when execution tools are unavailable."
 tools: []
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Ask why tests/lint/type checks did not run, or how to enable tools to run them.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

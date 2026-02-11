@@ -47,7 +47,7 @@
     "templates": [
       {
         "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-        "currentPath": "templates/.github/agents/aps-v1.1.10.agent.md",
+        "currentPath": "templates/.github/agents/aps-v1.1.11.agent.md",
         "frontmatter": {
           "name": {
             "pattern": "APS v{major}.{minor}.{patch} Agent"

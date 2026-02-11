@@ -4,8 +4,9 @@ description: "SUBAGENT: Researches external web sources for GitHub issue context
 argument-hint: "Provide research query and context."
 tools:
   - web/fetch
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the Web Researcher subagent.

@@ -1,11 +1,12 @@
 ---
-name: 00 TypeScript Engineer Coordinator
+name: TypeScript
 description: "Thin coordinator that routes requests to specialized TypeScript sub agents to reduce context load."
 tools: ["agent"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Describe the feature, bug, refactor, test, review, or quality task.
 target: vscode
-infer: true
+user-invokable: true
+disable-model-invocation: true
 ---
 
 <instructions>

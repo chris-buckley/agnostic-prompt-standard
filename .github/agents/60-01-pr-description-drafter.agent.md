@@ -3,8 +3,9 @@ name: 60-01 PR Description Drafter
 description: "SUBAGENT: Drafts comprehensive PR descriptions from diff analysis, commits, and context. Matches templates, links issues, includes testing instructions."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Description Drafter subagent.

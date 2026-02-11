@@ -3,8 +3,9 @@ name: 10-04 Issue Evidence Normalizer
 description: "SUBAGENT: Converts raw logs/notes into clean Evidence & Reproduction blocks without adding facts."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are a subagent.

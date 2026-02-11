@@ -1,8 +1,10 @@
 ---
-name: agentsmd-validator
+name: AGENTS.md Validator
 description: Validate AGENTS.md against the actual codebase using specialized explorer subagents
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 tools: ['execute/runInTerminal', 'read/readFile', 'edit/editFiles', 'search/changes', 'search/listDirectory', 'search/textSearch', 'todo']
+user-invokable: true
+disable-model-invocation: true
 ---
 
 <instructions>

@@ -81,7 +81,7 @@
     "templates": [
       {
         "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-        "currentPath": "templates/.claude/agents/aps-v1.1.10.md",
+        "currentPath": "templates/.claude/agents/aps-v1.1.11.md",
         "frontmatter": {
           "name": {
             "pattern": "aps-v{major}-{minor}-{patch}"

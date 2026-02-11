@@ -1,5 +1,5 @@
 ---
-name: 00 Issue Main
+name: Issues
 description: "MAIN: Orchestrates GitHub issue create/update/comment/close/reopen. Runs gh CLI. Delegates triage, drafting, research, labeling, duplicates, evidence, and comments to subagents."
 argument-hint: "Paste raw notes, or an issue reference + what changed."
 tools:
@@ -8,7 +8,9 @@ tools:
   - edit/createFile
   - todo
   - agent
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
+user-invokable: true
+disable-model-invocation: true
 handoffs:
   - label: Draft Issue
     agent: 10-02 Issue Drafter

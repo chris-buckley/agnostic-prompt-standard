@@ -2,10 +2,11 @@
 name: 30-08 TypeScript Run Tests
 description: "Run tests (fast or coverage) based on request intent."
 tools: ["execute"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Run tests or coverage.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

@@ -2,10 +2,11 @@
 name: 20-02 Python Derive Mode
 description: "Derive the workflow mode (feature, refactor, debug, test, quality, review) from user intent."
 tools: []
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Provide a task description to choose a mode.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

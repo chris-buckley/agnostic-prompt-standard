@@ -2,10 +2,11 @@
 name: 20-04 Python Gather Context
 description: "Gather minimal repository context and existing patterns for a Python task."
 tools: ["search", "read"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Provide a task description to focus context search.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

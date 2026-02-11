@@ -2,10 +2,11 @@
 name: 20-10 Python Validate Changes
 description: "Run repo-aligned fast validation checks and report results."
 tools: ["read", "read/problems", "execute"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Validate changes after edits.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

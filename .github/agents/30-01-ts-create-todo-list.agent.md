@@ -2,10 +2,11 @@
 name: 30-01 TypeScript Create Todo List
 description: "Initialize a standard todo list for TypeScript workflows."
 tools: ["todo"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Initialize a workflow todo list.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>

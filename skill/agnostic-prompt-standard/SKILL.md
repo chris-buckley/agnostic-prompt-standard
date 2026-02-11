@@ -7,7 +7,7 @@ metadata:
   author: "Christopher Buckley"
   co_authors: "Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.10"
+  framework_revision: "1.1.11"
   last_updated: "2026-01-15"
 ---
 
@@ -46,6 +46,7 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `format-ideation-list-v1.0.0.example.md`
     - `format-link-manifest-v1.0.0.example.md`
     - `format-markdown-table-v1.0.0.example.md`
+    - `format-smeac-plan-v1.0.0.example.md`
     - `format-table-api-coverage-v1.0.0.example.md`
 - `platforms/` — **non-normative** platform adapters (file conventions, frontmatter, tool registries, templates).
   - `README.md` — platforms overview and contract.

@@ -3,8 +3,9 @@ name: 60-04 PR Merge Analyzer
 description: "SUBAGENT: Assesses PR merge readiness. Checks CI status, approvals, conflicts, and recommends merge strategy."
 argument-hint: "Internal only."
 tools: []
-model: Claude Sonnet 4
-infer: true
+model: Claude Opus 4.6 (copilot)
+user-invokable: false
+disable-model-invocation: false
 ---
 <instructions>
 You are the PR Merge Analyzer subagent.

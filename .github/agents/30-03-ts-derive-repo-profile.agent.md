@@ -2,10 +2,11 @@
 name: 30-03 TypeScript Derive Repo Profile
 description: "Derive repo tooling profile (formatter, linter, type checker, test runner, package manager, hooks) from repository files."
 tools: ["read"]
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Use after gathering context.
 target: vscode
-infer: true
+user-invokable: false
+disable-model-invocation: false
 ---
 
 <instructions>
