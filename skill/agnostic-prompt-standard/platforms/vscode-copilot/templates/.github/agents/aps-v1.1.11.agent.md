@@ -1,10 +1,17 @@
 ---
-name: aps-v1-1-10
-description: "Generate APS v1.1.10 agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
-model: inherit
-tools: Read, Write, Glob, Grep, Bash, TodoWrite
-disallowedTools: Edit, MultiEdit
-permissionMode: default
+name: APS v1.1.11 Agent
+description: "Generate APS v1.1.11 .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
+tools:
+  - execute/runInTerminal
+  - read/readFile
+  - edit/createDirectory
+  - edit/createFile
+  - edit/editFiles
+  - web/fetch
+  - todo
+user-invokable: true
+disable-model-invocation: true
+target: vscode
 ---
 
 <instructions>
@@ -45,67 +52,69 @@ You MUST consult SECTION_GUIDE when composing each section in generated agents.
 </instructions>
 
 <constants>
-SKILL_PATH: ".claude/skills/agnostic-prompt-standard/SKILL.md"
-SKILL_PATH_ALT: ".github/skills/agnostic-prompt-standard/SKILL.md"
-PLATFORMS_BASE: ".claude/skills/agnostic-prompt-standard/platforms"
-PLATFORMS_BASE_ALT: ".github/skills/agnostic-prompt-standard/platforms"
+SKILL_PATH: ".github/skills/agnostic-prompt-standard/SKILL.md"
+SKILL_PATH_ALT: ".claude/skills/agnostic-prompt-standard/SKILL.md"
+PLATFORMS_BASE: ".github/skills/agnostic-prompt-standard/platforms"
+PLATFORMS_BASE_ALT: ".claude/skills/agnostic-prompt-standard/platforms"
 CTA: "Reply with letter choices (e.g., '1a, 2c') or 'ok' to accept defaults."
 
-PLATFORMS: JSON
+PLATFORMS: JSON<<
 {
-"vscode-copilot": {
-"displayName": "VS Code Copilot",
-"frontmatterPath": "vscode-copilot/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "vscode-copilot/tools-registry.json",
-"agentsDir": ".github/agents/",
-"agentExt": ".agent.md",
-"toolSyntax": "yaml-array"
-},
-"claude-code": {
-"displayName": "Claude Code",
-"frontmatterPath": "claude-code/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "claude-code/tools-registry.json",
-"agentsDir": ".claude/agents/",
-"agentExt": ".md",
-"toolSyntax": "comma-separated"
-}
+  "vscode-copilot": {
+    "displayName": "VS Code Copilot",
+    "frontmatterPath": "vscode-copilot/frontmatter/agent-frontmatter.md",
+    "toolsRegistryPath": "vscode-copilot/tools-registry.json",
+    "agentsDir": ".github/agents/",
+    "agentExt": ".agent.md",
+    "toolSyntax": "yaml-array"
+  },
+  "claude-code": {
+    "displayName": "Claude Code",
+    "frontmatterPath": "claude-code/frontmatter/agent-frontmatter.md",
+    "toolsRegistryPath": "claude-code/tools-registry.json",
+    "agentsDir": ".claude/agents/",
+    "agentExt": ".md",
+    "toolSyntax": "comma-separated"
+  }
 }
 >>
 
-FIELD_REQUIREMENTS_VSCODE: JSON
+FIELD_REQUIREMENTS_VSCODE: JSON<<
 {
-"required": ["name", "description"],
-"recommended": {
-"tools": [],
-"infer": true,
-"target": "vscode"
-},
-"conditional": ["model", "argument-hint", "mcp-servers", "handoffs"],
-"fieldOrder": ["name", "description", "tools", "infer", "target", "model", "argument-hint", "mcp-servers", "handoffs"]
+  "required": ["name", "description"],
+  "recommended": {
+    "tools": [],
+    "user-invokable": true,
+    "disable-model-invocation": false,
+    "target": "vscode"
+  },
+  "conditional": ["model", "argument-hint", "agents", "mcp-servers", "handoffs"],
+  "fieldOrder": ["name", "description", "tools", "user-invokable", "disable-model-invocation", "target", "model", "argument-hint", "agents", "mcp-servers", "handoffs"],
+  "deprecated": ["infer"]
 }
 >>
 
-FIELD_REQUIREMENTS_CLAUDE: JSON
+FIELD_REQUIREMENTS_CLAUDE: JSON<<
 {
-"required": ["name", "description"],
-"recommended": {
-"tools": "Read, Grep, Glob",
-"model": "inherit",
-"permissionMode": "default"
-},
-"conditional": ["disallowedTools", "skills", "hooks"],
-"fieldOrder": ["name", "description", "tools", "model", "permissionMode", "disallowedTools", "skills", "hooks"]
+  "required": ["name", "description"],
+  "recommended": {
+    "tools": "Read, Grep, Glob",
+    "model": "inherit",
+    "permissionMode": "default"
+  },
+  "conditional": ["disallowedTools", "skills", "hooks"],
+  "fieldOrder": ["name", "description", "tools", "model", "permissionMode", "disallowedTools", "skills", "hooks"]
 }
 >>
 
-SLUG_RULES_VSCODE: TEXT
+SLUG_RULES_VSCODE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
 - collapse/trim -
 >>
 
-SLUG_RULES_CLAUDE: TEXT
+SLUG_RULES_CLAUDE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
@@ -113,7 +122,7 @@ SLUG_RULES_CLAUDE: TEXT
 - name field must be unique identifier (lowercase, hyphens only)
 >>
 
-ASK_RULES: TEXT
+ASK_RULES: TEXT<<
 - ask only what blocks agent generation
 - 0-2 questions per turn
 - each question MUST have 4 suggested answers (a-d) plus option (e) for "all of the above" or "none/other"
@@ -130,7 +139,7 @@ ASK_RULES: TEXT
 - MUST prompt for description if not provided
 >>
 
-LINT_CHECKS: TEXT
+LINT_CHECKS: TEXT<<
 - section order: instructions, constants, formats, runtime, triggers, processes, input
 - tag newline rule
 - no tabs
@@ -146,7 +155,8 @@ LINT_CHECKS: TEXT
 - all Recommended fields are present with defaults if not overridden
 - Conditional fields only present when explicitly specified
 - no YAML comments in frontmatter output
-- VS Code: tools is YAML array, infer is boolean, target is string
+- VS Code: tools is YAML array, user-invokable is boolean, disable-model-invocation is boolean, target is string
+- VS Code: deprecated `infer` field MUST NOT appear in generated frontmatter
 - Claude Code: tools is comma-separated string, model is string, permissionMode is string
 - generated <instructions> use MUST/SHOULD/MAY vocabulary correctly
 - generated <instructions> has one directive per line with no blank lines
@@ -155,7 +165,7 @@ LINT_CHECKS: TEXT
 - generated <constants> use YAML blocks for structured data unless JSON is the target format
 >>
 
-AGENT_SKELETON: TEXT
+AGENT_SKELETON: TEXT<<
 <instructions>\n...\n</instructions>\n<constants>\n...\n</constants>\n<formats>\n...\n</formats>\n<runtime>\n...\n</runtime>\n<triggers>\n...\n</triggers>\n<processes>\n...\n</processes>\n<input>\n...\n</input>
 >>
 
@@ -380,16 +390,14 @@ RETURN: format="OUT_V1", agent_name=AGENT_SLUG, file_path=FILE_PATH, lint=LINT, 
 
 <process id="init" name="Init+Load Skill">
 SET SESSION_INIT := true (from "Agent Inference")
-USE `Glob` where: pattern=".claude/skills/agnostic-prompt-standard/SKILL.md,.github/skills/agnostic-prompt-standard/SKILL.md"
-CAPTURE SKILL_PATHS from `Glob`
-USE `Read` where: filePath=SKILL_PATHS[0]
-CAPTURE SKILL_CONTENT from `Read`
+READ file at SKILL_PATH or SKILL_PATH_ALT
+CAPTURE SKILL_CONTENT from read result
 </process>
 
 <process id="ask-platform" name="Ask Target Platform">
 SET STATE := "Selecting target platform" (from "Agent Inference")
 SET INTENT := "Target platform not yet selected" (from "Agent Inference")
-SET QUESTIONS := "Q1: Which platform do you want to generate an agent for?\n  a) VS Code Copilot (.github/agents/*.agent.md)\n  b) Claude Code (.claude/agents/*.md)\n  c) Other (specify)\n  d) Same as current platform (Claude Code)\n  e) None / Cancel" (from "Agent Inference")
+SET QUESTIONS := "Q1: Which platform do you want to generate an agent for?\n  a) VS Code Copilot (.github/agents/*.agent.md)\n  b) Claude Code (.claude/agents/*.md)\n  c) Other (specify)\n  d) Same as current platform (VS Code Copilot)\n  e) None / Cancel" (from "Agent Inference")
 SET TARGET_PLATFORM := <PLATFORM_ID> (from "Agent Inference" using USER_INPUT, PLATFORMS)
 IF TARGET_PLATFORM is not empty:
   RUN `load-platform`
@@ -399,22 +407,10 @@ IF TARGET_PLATFORM is not empty:
 SET PLATFORM_CONFIG := <CONFIG> (from "Agent Inference" using TARGET_PLATFORM, PLATFORMS)
 SET FRONTMATTER_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.frontmatterPath)
 SET TOOLS_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.toolsRegistryPath)
-USE `Glob` where: pattern=FRONTMATTER_PATH
-CAPTURE FRONTMATTER_PATHS from `Glob`
-IF FRONTMATTER_PATHS is empty:
-  SET FRONTMATTER_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.frontmatterPath)
-  USE `Glob` where: pattern=FRONTMATTER_PATH
-  CAPTURE FRONTMATTER_PATHS from `Glob`
-USE `Read` where: filePath=FRONTMATTER_PATHS[0]
-CAPTURE FRONTMATTER_TEMPLATE from `Read`
-USE `Glob` where: pattern=TOOLS_PATH
-CAPTURE TOOLS_PATHS from `Glob`
-IF TOOLS_PATHS is empty:
-  SET TOOLS_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.toolsRegistryPath)
-  USE `Glob` where: pattern=TOOLS_PATH
-  CAPTURE TOOLS_PATHS from `Glob`
-USE `Read` where: filePath=TOOLS_PATHS[0]
-CAPTURE ADAPTER_TOOLS from `Read`
+READ file at FRONTMATTER_PATH (fallback to PLATFORMS_BASE_ALT if not found)
+CAPTURE FRONTMATTER_TEMPLATE from read result
+READ file at TOOLS_PATH (fallback to PLATFORMS_BASE_ALT if not found)
+CAPTURE ADAPTER_TOOLS from read result
 IF TARGET_PLATFORM = "claude-code":
   SET FIELD_REQUIREMENTS := FIELD_REQUIREMENTS_CLAUDE (from "Constant Lookup")
 ELSE:
@@ -435,8 +431,8 @@ ELSE:
   SET AGENT_SLUG := <SLUG> (from "Agent Inference" using INTENT, SLUG_RULES_VSCODE)
 SET FILE_PATH := <AGENT_FILE_PATH> (from "Agent Inference" using AGENT_SLUG, PLATFORM_CONFIG.agentsDir, PLATFORM_CONFIG.agentExt)
 SET AGENT := <AGENT_TEXT> (from "Agent Inference" using INTENT, SKILL_CONTENT, FRONTMATTER_TEMPLATE, ADAPTER_TOOLS, AGENT_SKELETON, PLATFORM_CONFIG, FIELD_REQUIREMENTS, SECTION_GUIDE, CROSS_REF, APS_NAMING, COMMON_ERRORS, TOOL_SELECTION, VOCAB_RULES)
-USE `Bash` where: command="mkdir -p " + PLATFORM_CONFIG.agentsDir
-USE `Write` where: filePath=FILE_PATH, content=AGENT
+USE `edit/createDirectory` where: dirPath=PLATFORM_CONFIG.agentsDir
+USE `edit/createFile` where: filePath=FILE_PATH, content=AGENT
 SET LINT := <LINT_TEXT> (from "Agent Inference" using AGENT, LINT_CHECKS, TARGET_PLATFORM, FIELD_REQUIREMENTS, COMMON_ERRORS)
 SET LINT_CLEAN := <IS_CLEAN> (from "Agent Inference" using LINT)
 </process>
