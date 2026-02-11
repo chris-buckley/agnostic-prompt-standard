@@ -21,13 +21,30 @@ tools:
   - usages
 
 # model: Specifies the AI model used for prompts; if omitted, the currently
-# selected model is used.
+# selected model is used. Accepts a single model name or a prioritized array.
+# When an array is provided, the first available model is used.
 # Models currently available: "Claude Haiku 4.5 (copilot)"|"Claude Opus 4.5 (copilot)"|"Claude Sonnet 4 (copilot)"|"Claude Sonnet 4.5 (copilot)"|"Gemini 2.5 Pro (copilot)"|"Gemini 3 Flash (Preview) (copilot)"|"Gemini 3 Pro (Preview) (copilot)"|"GPT-4.1 (copilot)"
 # Prefer "Claude Opus 4.5 (copilot)" or "Claude Sonnet 4 (copilot)" for best performance unless user specifies otherwise.
 model: Claude Opus 4.5 (copilot)
 
-# infer: Boolean flag (default true) to allow the custom agent to run as a subagent.
-infer: true
+# user-invokable: Controls whether the agent appears in the agents dropdown in
+# chat. Set to false to create agents only accessible as subagents or
+# programmatically. Defaults to true.
+# Replaces the deprecated `infer` attribute (see Deprecation Notice below).
+user-invokable: true
+
+# disable-model-invocation: Prevents the agent from being invoked as a subagent
+# by other agents. Set to true when agents should only be triggered explicitly by
+# users. Defaults to false.
+# Replaces the deprecated `infer` attribute (see Deprecation Notice below).
+disable-model-invocation: false
+
+# agents: Restricts which subagents this agent can invoke. Accepts a list of
+# agent names, '*' for all agents (default), or [] for none. Requires the
+# `agent` tool in the tools list to enable subagent invocation. Explicitly
+# listing an agent in this array overrides that agent's
+# disable-model-invocation: true setting.
+agents: '*'
 
 # target: Target environment for the agent, either `vscode` or `github-copilot`.
 target: vscode
@@ -42,6 +59,7 @@ mcp-servers: []
 #   - agent: Identifier of the target agent to switch to. Note that the name comes from the frontmatter `name` field of the target agent's file.
 #   - prompt: Prompt text sent to the target agent.
 #   - send: Optional boolean; when true, the prompt auto-submits (default false).
+#   - model: Optional model for the handoff execution.
 handoffs:
   - label: Implement Plan
     agent: implementation
@@ -49,6 +67,18 @@ handoffs:
     send: false
 ---
 ```
+
+## Deprecation Notice
+
+The `infer` frontmatter attribute is **deprecated** as of VS Code 1.109 (January 2026). Use `user-invokable` and `disable-model-invocation` instead for more granular control over agent invocability. See the [VS Code 1.109 release notes](https://code.visualstudio.com/updates/v1_109#_control-how-custom-agents-are-invoked) and [subagents documentation](https://code.visualstudio.com/docs/copilot/agents/subagents) for details.
+
+**Migration guide:**
+
+| Old (`infer`) | New equivalent |
+|---|---|
+| `infer: true` (head agent) | `user-invokable: true` + `disable-model-invocation: true` |
+| `infer: true` (subagent) | `user-invokable: false` + `disable-model-invocation: false` |
+| `infer: false` | `user-invokable: false` + `disable-model-invocation: true` |
 
 ## Field Requirements & Defaults
 
@@ -61,10 +91,12 @@ handoffs:
 | `name` | Required | — | Must be provided; no default |
 | `description` | Required | — | Must be provided; no default |
 | `tools` | Recommended | `[]` | Empty array if no tools needed; YAML array syntax |
-| `infer` | Recommended | `true` | Always include for subagents |
+| `user-invokable` | Recommended | `true` | Set to `false` for subagent-only agents |
+| `disable-model-invocation` | Recommended | `false` | Set to `true` for user-only agents |
 | `target` | Recommended | `vscode` | Include explicitly for clarity |
-| `model` | Conditional | *(omit)* | Only include if specific model required; omit to use user's selected model |
+| `model` | Conditional | *(omit)* | Only include if specific model required; omit to use user's selected model. Accepts a string or prioritized array |
 | `argument-hint` | Conditional | *(omit)* | Only include if agent accepts user input |
+| `agents` | Conditional | `'*'` | Only include to restrict subagent access; requires `agent` tool in tools list |
 | `mcp-servers` | Conditional | *(omit)* | Only include when `target: github-copilot` |
 | `handoffs` | Conditional | *(omit)* | Only include if agent should suggest transitions to other agents |
 
@@ -176,7 +208,8 @@ tools:
 name: my-agent
 description: "Brief description of what this agent does."
 tools: []
-infer: true
+user-invokable: true
+disable-model-invocation: false
 target: vscode
 ---
 ```
@@ -191,7 +224,8 @@ tools:
   - read
   - edit
   - execute
-infer: true
+user-invokable: true
+disable-model-invocation: false
 target: vscode
 ---
 ```
@@ -206,7 +240,8 @@ tools:
   - search/changes
   - read/readFile
   - read/problems
-infer: true
+user-invokable: true
+disable-model-invocation: false
 target: vscode
 ---
 ```
@@ -223,7 +258,8 @@ tools:
   - execute/runTests
   - execute/runInTerminal
   - execute/getTerminalOutput
-infer: true
+user-invokable: true
+disable-model-invocation: false
 target: vscode
 ---
 ```
@@ -237,7 +273,8 @@ tools:
   - search
   - read
   - todo
-infer: true
+user-invokable: true
+disable-model-invocation: true
 target: vscode
 handoffs:
   - label: Implement Plan
@@ -247,8 +284,60 @@ handoffs:
 ---
 ```
 
+### Subagent (Not User-Invokable)
+```yaml
+---
+name: internal-helper
+description: "Internal helper agent invoked only by other agents."
+tools:
+  - search/codebase
+  - read/readFile
+user-invokable: false
+disable-model-invocation: false
+target: vscode
+---
+```
+
+### Agent with Model Fallback
+```yaml
+---
+name: smart-planner
+description: "Plans features using the best available model."
+tools:
+  - search
+  - read
+  - todo
+user-invokable: true
+disable-model-invocation: true
+target: vscode
+model:
+  - Claude Sonnet 4.5 (copilot)
+  - GPT-4.1 (copilot)
+---
+```
+
+### Agent with Restricted Subagents
+```yaml
+---
+name: coordinator
+description: "Orchestrates work across specific subagents."
+tools:
+  - search
+  - read
+  - agent
+user-invokable: true
+disable-model-invocation: true
+target: vscode
+agents:
+  - internal-helper
+  - code-reviewer
+---
+```
+
 ## Notes
 
 - If you see "Unexpected indentation" diagnostics, keep `description` as a **single-line** string
 - The function name (snake_case) is what the model actually calls at runtime — you don't need to specify it
 - Chat mentions use `#` prefix (e.g., `#codebase`, `#problems`)
+- The `infer` attribute is deprecated — use `user-invokable` and `disable-model-invocation` instead
+- Explicitly listing an agent in the `agents` array overrides that agent's `disable-model-invocation: true` setting

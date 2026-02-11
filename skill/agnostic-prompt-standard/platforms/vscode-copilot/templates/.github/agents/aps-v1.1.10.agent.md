@@ -9,7 +9,8 @@ tools:
   - edit/editFiles
   - web/fetch
   - todo
-infer: true
+user-invokable: true
+disable-model-invocation: true
 target: vscode
 ---
 
@@ -57,61 +58,63 @@ PLATFORMS_BASE: ".github/skills/agnostic-prompt-standard/platforms"
 PLATFORMS_BASE_ALT: ".claude/skills/agnostic-prompt-standard/platforms"
 CTA: "Reply with letter choices (e.g., '1a, 2c') or 'ok' to accept defaults."
 
-PLATFORMS: JSON
+PLATFORMS: JSON<<
 {
-"vscode-copilot": {
-"displayName": "VS Code Copilot",
-"frontmatterPath": "vscode-copilot/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "vscode-copilot/tools-registry.json",
-"agentsDir": ".github/agents/",
-"agentExt": ".agent.md",
-"toolSyntax": "yaml-array"
-},
-"claude-code": {
-"displayName": "Claude Code",
-"frontmatterPath": "claude-code/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "claude-code/tools-registry.json",
-"agentsDir": ".claude/agents/",
-"agentExt": ".md",
-"toolSyntax": "comma-separated"
-}
+  "vscode-copilot": {
+    "displayName": "VS Code Copilot",
+    "frontmatterPath": "vscode-copilot/frontmatter/agent-frontmatter.md",
+    "toolsRegistryPath": "vscode-copilot/tools-registry.json",
+    "agentsDir": ".github/agents/",
+    "agentExt": ".agent.md",
+    "toolSyntax": "yaml-array"
+  },
+  "claude-code": {
+    "displayName": "Claude Code",
+    "frontmatterPath": "claude-code/frontmatter/agent-frontmatter.md",
+    "toolsRegistryPath": "claude-code/tools-registry.json",
+    "agentsDir": ".claude/agents/",
+    "agentExt": ".md",
+    "toolSyntax": "comma-separated"
+  }
 }
 >>
 
-FIELD_REQUIREMENTS_VSCODE: JSON
+FIELD_REQUIREMENTS_VSCODE: JSON<<
 {
-"required": ["name", "description"],
-"recommended": {
-"tools": [],
-"infer": true,
-"target": "vscode"
-},
-"conditional": ["model", "argument-hint", "mcp-servers", "handoffs"],
-"fieldOrder": ["name", "description", "tools", "infer", "target", "model", "argument-hint", "mcp-servers", "handoffs"]
+  "required": ["name", "description"],
+  "recommended": {
+    "tools": [],
+    "user-invokable": true,
+    "disable-model-invocation": false,
+    "target": "vscode"
+  },
+  "conditional": ["model", "argument-hint", "agents", "mcp-servers", "handoffs"],
+  "fieldOrder": ["name", "description", "tools", "user-invokable", "disable-model-invocation", "target", "model", "argument-hint", "agents", "mcp-servers", "handoffs"],
+  "deprecated": ["infer"]
 }
 >>
 
-FIELD_REQUIREMENTS_CLAUDE: JSON
+FIELD_REQUIREMENTS_CLAUDE: JSON<<
 {
-"required": ["name", "description"],
-"recommended": {
-"tools": "Read, Grep, Glob",
-"model": "inherit",
-"permissionMode": "default"
-},
-"conditional": ["disallowedTools", "skills", "hooks"],
-"fieldOrder": ["name", "description", "tools", "model", "permissionMode", "disallowedTools", "skills", "hooks"]
+  "required": ["name", "description"],
+  "recommended": {
+    "tools": "Read, Grep, Glob",
+    "model": "inherit",
+    "permissionMode": "default"
+  },
+  "conditional": ["disallowedTools", "skills", "hooks"],
+  "fieldOrder": ["name", "description", "tools", "model", "permissionMode", "disallowedTools", "skills", "hooks"]
 }
 >>
 
-SLUG_RULES_VSCODE: TEXT
+SLUG_RULES_VSCODE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
 - collapse/trim -
 >>
 
-SLUG_RULES_CLAUDE: TEXT
+SLUG_RULES_CLAUDE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
@@ -119,7 +122,7 @@ SLUG_RULES_CLAUDE: TEXT
 - name field must be unique identifier (lowercase, hyphens only)
 >>
 
-ASK_RULES: TEXT
+ASK_RULES: TEXT<<
 - ask only what blocks agent generation
 - 0-2 questions per turn
 - each question MUST have 4 suggested answers (a-d) plus option (e) for "all of the above" or "none/other"
@@ -136,7 +139,7 @@ ASK_RULES: TEXT
 - MUST prompt for description if not provided
 >>
 
-LINT_CHECKS: TEXT
+LINT_CHECKS: TEXT<<
 - section order: instructions, constants, formats, runtime, triggers, processes, input
 - tag newline rule
 - no tabs
@@ -152,7 +155,8 @@ LINT_CHECKS: TEXT
 - all Recommended fields are present with defaults if not overridden
 - Conditional fields only present when explicitly specified
 - no YAML comments in frontmatter output
-- VS Code: tools is YAML array, infer is boolean, target is string
+- VS Code: tools is YAML array, user-invokable is boolean, disable-model-invocation is boolean, target is string
+- VS Code: deprecated `infer` field MUST NOT appear in generated frontmatter
 - Claude Code: tools is comma-separated string, model is string, permissionMode is string
 - generated <instructions> use MUST/SHOULD/MAY vocabulary correctly
 - generated <instructions> has one directive per line with no blank lines
@@ -161,7 +165,7 @@ LINT_CHECKS: TEXT
 - generated <constants> use YAML blocks for structured data unless JSON is the target format
 >>
 
-AGENT_SKELETON: TEXT
+AGENT_SKELETON: TEXT<<
 <instructions>\n...\n</instructions>\n<constants>\n...\n</constants>\n<formats>\n...\n</formats>\n<runtime>\n...\n</runtime>\n<triggers>\n...\n</triggers>\n<processes>\n...\n</processes>\n<input>\n...\n</input>
 >>
 
