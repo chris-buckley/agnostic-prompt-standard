@@ -350,37 +350,47 @@ def init(
 
     if not yes and is_tty():
         if not (repo or personal):
-            # Compute likely destinations for display
-            personal_bases: set[str] = set()
+            # Compute resolved display paths for each scope.
             wants_claude = any(is_claude_platform(p) for p in selected_platforms)
             wants_non_claude = (
                 any(not is_claude_platform(p) for p in selected_platforms)
                 or not selected_platforms
             )
+            project_paths: list[str] = []
+            personal_paths: list[str] = []
             if wants_non_claude:
-                base = str(default_personal_skill_path(claude=False)).replace(
-                    SKILL_ID, ""
+                if repo_root:
+                    project_paths.append(
+                        _fmt_path(default_project_skill_path(repo_root, claude=False))
+                    )
+                personal_paths.append(
+                    _fmt_path(default_personal_skill_path(claude=False))
                 )
-                personal_bases.add(_fmt_path(Path(base)))
             if wants_claude:
-                base = str(default_personal_skill_path(claude=True)).replace(
-                    SKILL_ID, ""
+                if repo_root:
+                    project_paths.append(
+                        _fmt_path(default_project_skill_path(repo_root, claude=True))
+                    )
+                personal_paths.append(
+                    _fmt_path(default_personal_skill_path(claude=True))
                 )
-                personal_bases.add(_fmt_path(Path(base)))
+            # Deduplicate paths preserving order.
+            project_display = ", ".join(dict.fromkeys(project_paths))
+            personal_display = ", ".join(dict.fromkeys(personal_paths))
 
             scope_answer = questionary.select(
                 "Where should APS be installed?",
                 choices=[
                     questionary.Choice(
                         title=(
-                            f"Project skill in this repo ({_fmt_path(repo_root)})"
+                            f"Local (project)    {project_display}"
                             if repo_root
-                            else "Project skill (choose a workspace folder)"
+                            else "Local (project)    choose a workspace folder"
                         ),
                         value="repo",
                     ),
                     questionary.Choice(
-                        title=f"Personal skill for your user ({', '.join(sorted(personal_bases))})",
+                        title=f"Global (personal)  {personal_display}",
                         value="personal",
                     ),
                 ],

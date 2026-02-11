@@ -4,7 +4,6 @@ import process from 'node:process';
 import { checkbox, confirm, input, select } from '@inquirer/prompts';
 
 import {
-  SKILL_ID,
   copyDir,
   copyTemplateTree,
   defaultPersonalSkillPath,
@@ -327,14 +326,19 @@ export async function runInit(options: InitCliOptions): Promise<void> {
 
   if (!options.yes && isTTY()) {
     if (!installScope) {
-      const personalBases = new Set<string>();
-      // Describe likely destinations based on selection.
+      // Compute resolved display paths for each scope.
       const wantsClaude = selectedPlatforms.some((p) => isClaudePlatform(p));
       const wantsNonClaude = selectedPlatforms.some((p) => !isClaudePlatform(p)) || selectedPlatforms.length === 0;
+      const projectPaths: string[] = [];
+      const personalPaths: string[] = [];
       if (wantsNonClaude) {
-        personalBases.add(fmtPath(defaultPersonalSkillPath({ claude: false }).replace(SKILL_ID, '')));      }
+        if (repoRoot) projectPaths.push(fmtPath(defaultProjectSkillPath(repoRoot, { claude: false })));
+        personalPaths.push(fmtPath(defaultPersonalSkillPath({ claude: false })));
+      }
       if (wantsClaude) {
-        personalBases.add(fmtPath(defaultPersonalSkillPath({ claude: true }).replace(SKILL_ID, '')));      }
+        if (repoRoot) projectPaths.push(fmtPath(defaultProjectSkillPath(repoRoot, { claude: true })));
+        personalPaths.push(fmtPath(defaultPersonalSkillPath({ claude: true })));
+      }
 
       installScope = await select({
         message: 'Where should APS be installed?',
@@ -342,12 +346,12 @@ export async function runInit(options: InitCliOptions): Promise<void> {
         choices: [
           {
             name: repoRoot
-              ? `Project skill in this repo (${fmtPath(repoRoot)})`
-              : 'Project skill (choose a workspace folder)',
+              ? `Local (project)    ${unique(projectPaths).join(', ')}`
+              : 'Local (project)    choose a workspace folder',
             value: 'repo',
           },
           {
-            name: `Personal skill for your user (${Array.from(personalBases).join(', ')})`,
+            name: `Global (personal)  ${unique(personalPaths).join(', ')}`,
             value: 'personal',
           },
         ],
