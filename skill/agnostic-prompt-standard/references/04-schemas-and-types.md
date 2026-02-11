@@ -126,6 +126,7 @@ Style guidelines:
 - Hierarchical outline: [../assets/formats/format-hierarchical-outline-v1.0.0.example.md](../assets/formats/format-hierarchical-outline-v1.0.0.example.md)
 - Markdown table: [../assets/formats/format-markdown-table-v1.0.0.example.md](../assets/formats/format-markdown-table-v1.0.0.example.md)
 - Code changes full: [../assets/formats/format-code-changes-full-v1.0.0.example.md](../assets/formats/format-code-changes-full-v1.0.0.example.md)
+- SMEAC plan: [../assets/formats/format-smeac-plan-v1.0.0.example.md](../assets/formats/format-smeac-plan-v1.0.0.example.md)
 
 ## Example constants
 

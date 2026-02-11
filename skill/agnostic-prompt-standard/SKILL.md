@@ -46,6 +46,7 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `format-ideation-list-v1.0.0.example.md`
     - `format-link-manifest-v1.0.0.example.md`
     - `format-markdown-table-v1.0.0.example.md`
+    - `format-smeac-plan-v1.0.0.example.md`
     - `format-table-api-coverage-v1.0.0.example.md`
 - `platforms/` — **non-normative** platform adapters (file conventions, frontmatter, tool registries, templates).
   - `README.md` — platforms overview and contract.
