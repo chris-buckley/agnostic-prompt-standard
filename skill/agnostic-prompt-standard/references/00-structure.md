@@ -50,7 +50,7 @@ Constants MUST use one of the following forms:
 1. Inline constant: `SYMBOL: VALUE` where `VALUE` is `String | Number | Boolean | JSON`.
 2. Block constant: `SYMBOL: <BLOCK_TYPE><<` then BODY lines then a closing delimiter line `>>`.
 
-`<BLOCK_TYPE>` MUST be one of: `JSON`, `TEXT`, `YAML`.
+`<BLOCK_TYPE>` MUST be one of: `JSON`, `TEXT`, `YAML`, `CSV`.
 
 Block constant opening lines MUST:
 
@@ -62,13 +62,14 @@ Valid openers:
 - `SYMBOL: JSON<<`
 - `SYMBOL: TEXT<<`
 - `SYMBOL: YAML<<`
+- `SYMBOL: CSV<<`
 
 Block constant closing delimiter MUST be a line whose content is exactly `>>` starting at column 1
 (no leading/trailing whitespace).
 
 ### JSON block constants
 
-- BODY MUST parse as `JsonValue` per **05 Grammar**.
+- BODY MUST parse as `JsonValue` per **05 Grammar**; invalid JSON → `AG-007`.
 - Any `UpperSym` that appears inside a JSON block constant BODY MUST resolve from `<constants>`
   before execution; unresolved → `AG-006`.
 - Engines MUST compile JSON block constants to canonical JSON that conforms to `json_spacing` and
@@ -84,16 +85,49 @@ Block constant closing delimiter MUST be a line whose content is exactly `>>` st
 
 ### YAML block constants
 
-- BODY MUST parse as valid YAML.
+- BODY MUST parse as valid YAML; invalid YAML → `AG-047`.
 - Any `UpperSym` that appears inside a YAML block constant BODY MUST resolve from `<constants>`
   before execution; unresolved → `AG-006`.
 - Engines MUST compile YAML block constants to canonical YAML with lexicographic key ordering and
   consistent indentation (see **02 Linting and formatting**).
 
+### CSV block constants
+
+CSV blocks are for compact tabular data.
+
+- BODY MUST parse as CSV (comma-separated values) using the rules below; invalid CSV → `AG-048`.
+- Separator is `,` (comma).
+- Quote character is `"` (double quote).
+- First record is the header row.
+  - Header fields MUST be unquoted.
+  - Header fields MUST match `JsonKey` per **05 Grammar**.
+  - Header fields MUST be unique.
+- Each subsequent record MUST have the same number of fields as the header row (ragged rows are
+  forbidden).
+- Quoted cell values:
+  - MUST follow RFC 4180 quoting (`""` escapes `"`).
+  - Are always treated as `String` (no constant substitution).
+- Unquoted cell values are parsed in this order:
+  1. If the full cell matches `UpperSym`, it denotes a constant symbol reference.
+     - Engines MUST resolve it from `<constants>` before execution; unresolved → `AG-006`.
+     - The referenced constant MUST be a scalar (`String | Number | Boolean | null`) or the engine
+       MUST raise `AG-048`.
+  2. If the cell matches JSON scalars (`Number`, `true`, `false`, `null`), it becomes that JSON
+     scalar.
+  3. Otherwise the cell is a `String` (no trimming).
+- Engines MUST compile CSV block constants to canonical JSON as a `JsonArr` of `JsonObj` rows using
+  header fields as keys (see **02 Linting and formatting**).
+  - Record order MUST be preserved.
+  - Row object keys MUST be emitted in lexicographic order in canonical JSON form.
+
 ### Block type selection guidance
+
+Prefer CSV blocks for compact tabular data with a header row and consistent columns.
 
 Prefer YAML blocks for structured data unless JSON has a specific advantage (e.g., the constant
 represents an actual JSON payload or JSON Schema).
+
+Prefer TEXT blocks only when the constant must remain opaque (verbatim).
 
 ## `<processes>` section
 

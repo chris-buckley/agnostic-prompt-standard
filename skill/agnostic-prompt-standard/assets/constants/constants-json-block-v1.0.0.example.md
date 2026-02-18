@@ -1,7 +1,7 @@
-<constants>
-// Example: multi-line JSON constant using JSON<< ... >>.
-// Engines parse BODY as JsonValue then compile it to canonical JSON (see json_spacing).
+<!-- Example: multi-line JSON constant using JSON<< ... >>.
+     Engines parse BODY as JsonValue then compile it to canonical JSON (see json_spacing). -->
 
+<constants>
 DEFAULT_TZ: "Z"
 
 API_CONFIG: JSON<<

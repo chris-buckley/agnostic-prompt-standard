@@ -155,6 +155,7 @@ APS makes tool usage explicit and auditable. Platform adapters encode tool risk 
 A docs indexer agent produces a documentation map. The format contract:
 
 ```
+<formats>
 <format id="DOCS_INDEX_V1" name="Documentation Index"
         purpose="Token-efficient hierarchical documentation map.">
 # <PROJECT_TITLE> Documentation Map
@@ -176,6 +177,7 @@ WHERE:
 - <HEADING_TEXT> is String; H2/H3 heading text.
 - <SUBHEADING_TEXT> is String; nested heading under parent.
 </format>
+</formats>
 ```
 
 A CI step validates: does the agent's output parse as a single `format:DOCS_INDEX_V1` fenced block? Are all required placeholders resolved? Are timestamps ISO 8601? If not, the build fails with a specific AG-0xx error code. No regex hacking. No "it looks about right."
@@ -218,7 +220,7 @@ The most common adoption path is agent prompts: structured instructions that gov
 The core abstraction is a structured envelope with seven ordered sections:
 
 1. Instructions: directives that govern behavior (one per line, imperative, lintable).
-2. Constants: read-only values resolved before execution (inline, JSON blocks, TEXT blocks, YAML blocks).
+2. Constants: read-only values resolved before execution (inline, JSON blocks, TEXT blocks, YAML blocks, CSV blocks).
 3. Formats: output contracts with placeholders, types, and WHERE clauses.
 4. Runtime: environment-specific bindings (dev, staging, prod).
 5. Triggers: event-to-process mappings.
