@@ -1,17 +1,49 @@
 # Agnostic Prompt Standard (APS)
 
-A framework for describing systems in a way that both humans and AI agents can read, write, and reason about.
+APS is a system description standard. It gives you explicit structure, output contracts, and validation rules for the instructions that govern AI agents, and it works across platforms.
 
-## What is APS?
+APS makes more sense when you see it, so here's the smallest useful prompt:
 
-APS is a general system description standard. The primary use case is agentic AI prompts, but the framework extends to any system that benefits from structured, machine-readable documentation.
+```text
+<instructions>
+You MUST output exactly one fenced block whose info string is `format:HELLO_V1`.
+You MUST NOT output any text outside that fenced block.
+</instructions>
+<constants>
+NAME: "world"
+</constants>
+<formats>
+<format id="HELLO_V1" name="Hello" purpose="Minimal greeting output.">
+Hello, <NAME>!
 
-**Core ideas:**
-- AI systems can understand and reason about other systems—including themselves
-- Modular, generalizable prompts that remain useful as capabilities advance
-- Model-agnostic patterns that generalize across different AI implementations
+WHERE:
+- <NAME> is String.
+</format>
+</formats>
+<runtime>
+</runtime>
+<triggers>
+<trigger event="manual" target="hello" />
+</triggers>
+<processes>
+<process id="hello">
+TELL "Render the HELLO_V1 greeting."
+RETURN: name=NAME
+</process>
+</processes>
+<input>
+</input>
+```
 
-The standard lives in [`./skill/agnostic-prompt-standard`](./skill/agnostic-prompt-standard) and is packaged as a "skill"—an emerging format for AI-consumable specifications.
+Output (what downstream automation can rely on):
+
+```format:HELLO_V1
+Hello, world!
+```
+
+Seven ordered sections. Typed output contracts. Lintable structure. If the model drifts from the declared format, a validator catches it with a specific error code instead of letting bad data through.
+
+For the full motivation, use cases, concrete examples, and design rationale, read [Why APS Exists](docs/why-aps-exists.md).
 
 ## Quickstart
 
@@ -29,17 +61,23 @@ For Claude Code platform path (`.claude/skills`):
 npx @agnostic-prompt/aps init --platform claude-code
 ```
 
+Validate your installation:
+
+```bash
+npx @agnostic-prompt/aps doctor
+```
+
 ## Skill Structure
 
 APS separates concerns into three layers:
 
 | Layer | Path | Purpose |
 |-------|------|---------|
-| **Specification** | `references/` | Normative rules (structure, vocabulary, grammar, etc.) |
-| **Assets** | `assets/` | Reusable templates and example components |
-| **Platforms** | `platforms/` | Adapters for specific tools (VS Code, Claude, etc.) |
+| Specification | `references/` | Normative rules (structure, vocabulary, grammar, error taxonomy) |
+| Assets | `assets/` | Reusable templates and example components |
+| Platforms | `platforms/` | Adapters for specific hosts (VS Code Copilot, Claude Code, OpenCode) |
 
-The core abstraction is a structured prompt envelope with seven ordered sections, from static instructions through executable processes to dynamic input.
+The core abstraction is a structured envelope with seven ordered sections, from static instructions through executable processes to dynamic input.
 
 <details>
 <summary>Full directory tree</summary>
@@ -68,11 +106,9 @@ skill/agnostic-prompt-standard/
 
 </details>
 
----
-
 ## CLI Tools
 
-APS ships with CLI tools for both Node.js and Python.
+Available on both npm and PyPI.
 
 | Package | Registry |
 |---------|----------|
@@ -95,8 +131,6 @@ pipx run agnostic-prompt-aps doctor
 ```
 
 > **Windows:** If `pipx run` fails with `FileNotFoundError`, use `pipx install agnostic-prompt-aps` or `python -m aps_cli` instead. See [`packages/aps-cli-py/README.md`](packages/aps-cli-py/README.md) for details.
-
----
 
 ## Development
 
@@ -121,15 +155,17 @@ cd packages/aps-cli-py && pytest -q tests
 
 ### Architecture
 
-Both CLIs bundle the skill as a "payload" for distribution:
-- **Node:** `packages/aps-cli-node/payload/`
-- **Python:** `packages/aps-cli-py/src/aps_cli/payload/`
+Both CLIs bundle the skill as a payload for distribution:
+
+- Node: `packages/aps-cli-node/payload/`
+- Python: `packages/aps-cli-py/src/aps_cli/payload/`
 
 The `sync_payload.py` script copies from `skill/` to these locations before building.
 
 ### Version Management
 
 The canonical version is `framework_revision` in `SKILL.md`. All of these must match:
+
 - `skill/agnostic-prompt-standard/SKILL.md`
 - `packages/aps-cli-node/package.json`
 - `packages/aps-cli-py/pyproject.toml`
@@ -144,10 +180,16 @@ The canonical version is `framework_revision` in `SKILL.md`. All of these must m
 
 ### Key Files
 
-**CLI behavior:**
+CLI behavior:
+
 - Node: `packages/aps-cli-node/src/core.js`, `src/cli.js`
 - Python: `packages/aps-cli-py/src/aps_cli/core.py`, `cli.py`
 
-**Specification:**
+Specification:
+
 - `skill/agnostic-prompt-standard/references/*.md`
 - `skill/agnostic-prompt-standard/SKILL.md`
+
+## License
+
+MIT
