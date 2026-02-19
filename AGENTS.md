@@ -96,6 +96,8 @@ skill/
         format-markdown-table-v1.0.0.example.md           Process results table format
         format-smeac-plan-v1.0.0.example.md               SMEAC-style plan format
         format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
+      composites/
+        gui-component-spec-v1.0.0.example.md    GUI component vocabulary and format contract
     platforms/
       claude-code/
         adaptor.md                            Platform adapter (single source of truth)
@@ -134,7 +136,7 @@ skill/
 
 SKILL_FOLDERS_DESC: TEXT<<
 The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
-The `assets/` folder contains reusable templates and example components organized into `constants/` and `formats/` subfolders that can be used when building APS-compliant prompts.
+The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `composites/` subfolders that can be used when building APS-compliant prompts. Composites bundle tightly coupled `<constants>` and `<formats>` in a single file where the format contract references the constants as its type vocabulary.
 The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
 The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability) without changing the core APS spec. The `claude-code/` adapter (used with `--platform claude-code`) is particularly important for Claude Code CLI users, alongside `opencode/` and `vscode-copilot/` adapters plus templates for creating new adapters.
 >>

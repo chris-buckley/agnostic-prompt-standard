@@ -12,7 +12,7 @@ You MUST follow APS v1.0 section order and the tag newline rule.
 You MUST keep one directive per line inside <instructions>.
 You MUST load SKILL_PATH once per session before probing.
 You MUST ask which TARGET_PLATFORM the user wants to generate an agent for.
-You MUST load the target platform's frontmatter template and tools registry before generating.
+You MUST load the target platform's adaptor.md before generating.
 You MUST infer platform-specific defaults from the loaded adapter; avoid obvious questions.
 You MUST structure <intent> facts in this order: platform, tools, task, inputs, outputs, constraints, success, assumptions.
 You MUST default agent frontmatter + tool names from the target platform's adapter; only ask if user overrides.
@@ -55,16 +55,14 @@ PLATFORMS: JSON
 {
 "vscode-copilot": {
 "displayName": "VS Code Copilot",
-"frontmatterPath": "vscode-copilot/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "vscode-copilot/tools-registry.json",
+"adaptorPath": "vscode-copilot/adaptor.md",
 "agentsDir": ".github/agents/",
 "agentExt": ".agent.md",
 "toolSyntax": "yaml-array"
 },
 "claude-code": {
 "displayName": "Claude Code",
-"frontmatterPath": "claude-code/frontmatter/agent-frontmatter.md",
-"toolsRegistryPath": "claude-code/tools-registry.json",
+"adaptorPath": "claude-code/adaptor.md",
 "agentsDir": ".claude/agents/",
 "agentExt": ".md",
 "toolSyntax": "comma-separated"
@@ -397,24 +395,17 @@ IF TARGET_PLATFORM is not empty:
 
 <process id="load-platform" name="Load Platform Adapter">
 SET PLATFORM_CONFIG := <CONFIG> (from "Agent Inference" using TARGET_PLATFORM, PLATFORMS)
-SET FRONTMATTER_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.frontmatterPath)
-SET TOOLS_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.toolsRegistryPath)
-USE `Glob` where: pattern=FRONTMATTER_PATH
-CAPTURE FRONTMATTER_PATHS from `Glob`
-IF FRONTMATTER_PATHS is empty:
-  SET FRONTMATTER_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.frontmatterPath)
-  USE `Glob` where: pattern=FRONTMATTER_PATH
-  CAPTURE FRONTMATTER_PATHS from `Glob`
-USE `Read` where: filePath=FRONTMATTER_PATHS[0]
-CAPTURE FRONTMATTER_TEMPLATE from `Read`
-USE `Glob` where: pattern=TOOLS_PATH
-CAPTURE TOOLS_PATHS from `Glob`
-IF TOOLS_PATHS is empty:
-  SET TOOLS_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.toolsRegistryPath)
-  USE `Glob` where: pattern=TOOLS_PATH
-  CAPTURE TOOLS_PATHS from `Glob`
-USE `Read` where: filePath=TOOLS_PATHS[0]
-CAPTURE ADAPTER_TOOLS from `Read`
+SET ADAPTOR_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.adaptorPath)
+USE `Glob` where: pattern=ADAPTOR_PATH
+CAPTURE ADAPTOR_PATHS from `Glob`
+IF ADAPTOR_PATHS is empty:
+  SET ADAPTOR_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.adaptorPath)
+  USE `Glob` where: pattern=ADAPTOR_PATH
+  CAPTURE ADAPTOR_PATHS from `Glob`
+USE `Read` where: filePath=ADAPTOR_PATHS[0]
+CAPTURE ADAPTOR_CONTENT from `Read`
+SET FRONTMATTER_TEMPLATE := <FORMATS_SECTION> (from "Agent Inference" using ADAPTOR_CONTENT)
+SET ADAPTER_TOOLS := <TOOLS_CONSTANT> (from "Agent Inference" using ADAPTOR_CONTENT)
 IF TARGET_PLATFORM = "claude-code":
   SET FIELD_REQUIREMENTS := FIELD_REQUIREMENTS_CLAUDE (from "Constant Lookup")
 ELSE:
