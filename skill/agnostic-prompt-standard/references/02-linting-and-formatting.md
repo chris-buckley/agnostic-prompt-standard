@@ -55,6 +55,21 @@ Engines that compile or canonicalize YAML MUST emit **canonical YAML** using the
 Source form inside YAML block constants MAY contain arbitrary formatting, but engines MUST parse
 and re-emit canonical YAML at compile time.
 
+## Canonical CSV compilation
+
+Engines that compile CSV block constants MUST:
+
+- Parse CSV per **00 Structure** (header row rules, quoting rules, row width rules).
+- Compile the result to canonical JSON using the rules in **Canonical JSON spacing**.
+- Preserve CSV record order in the compiled JSON array.
+
+If an engine also emits canonical CSV (informative), it SHOULD:
+
+- Use `,` as the separator and `"` as the quote character.
+- Quote a field only when required (contains `,`, `"`, or newline, or has leading/trailing space).
+- Escape `"` as `""` inside quoted fields.
+- Use LF newlines and emit no trailing whitespace.
+
 ## `where:` key ordering
 
 In `where:` parameter lists, keys MUST appear in lexicographic order. Violation → `AG-012`.
@@ -75,18 +90,37 @@ Violation → `AG-003` (InvalidId).
 An `UpperSym` appearing inside JSON objects/arrays denotes a **constant symbol reference**.
 Engines MUST resolve it from `<constants>` before execution or raise `AG-006`.
 
+## Constants inside YAML values
+
+An `UpperSym` appearing inside YAML mappings/sequences/scalars denotes a **constant symbol
+reference**.
+
+Engines MUST resolve it from `<constants>` before execution or raise `AG-006`.
+
+## Constants inside CSV values
+
+In a CSV block constant, an unquoted cell whose full content matches `UpperSym` denotes a
+**constant symbol reference**.
+
+- Engines MUST resolve it from `<constants>` before execution or raise `AG-006`.
+- The referenced constant MUST resolve to a scalar (`String | Number | Boolean | null`) or the
+  engine MUST raise `AG-048`.
+
 ## Block constants
 
 Block constants are allowed only inside `<constants>` (see **00 Structure**).
 
 Rules:
 
-- Block constant opening line MUST be `SYMBOL: JSON<<`, `SYMBOL: TEXT<<`, or `SYMBOL: YAML<<`
-  (exactly one ASCII space after `:`).
+- Block constant opening line MUST be `SYMBOL: JSON<<`, `SYMBOL: TEXT<<`, `SYMBOL: YAML<<`, or
+  `SYMBOL: CSV<<` (exactly one ASCII space after `:`).
 - Block constant BODY is line-oriented and terminates at the first line whose content is exactly
   `>>` starting at column 1.
 - Unknown `<BLOCK_TYPE>` → `AG-046`.
 - Missing closing delimiter `>>` → `AG-045`.
+- Invalid JSON block constant BODY → `AG-007`.
+- Invalid YAML block constant BODY → `AG-047`.
+- Invalid CSV block constant BODY → `AG-048`.
 
 ## Format blocks
 

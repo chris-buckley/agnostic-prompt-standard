@@ -1,7 +1,7 @@
-<constants>
-// Example: multi-line TEXT constant using TEXT<< ... >>.
-// NOTE: Comment stripping (//) does NOT apply inside TEXT<< bodies.
+<!-- Example: multi-line TEXT constant using TEXT<< ... >>.
+     NOTE: Comment stripping (//) does NOT apply inside TEXT<< bodies. -->
 
+<constants>
 REPO_TREE: TEXT<<
 cb-agnostic-prompt-protocol
 ├── assets

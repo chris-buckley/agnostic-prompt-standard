@@ -48,7 +48,9 @@ errors:
     - { code: AG-043, name: PlaceholderStyleError, desc: Placeholder not in <UPPER_SNAKE> form or not wrapped in angle brackets. }
     - { code: AG-044, name: ProcessArgsMismatch, desc: RUN statement arguments do not match the target process signature (missing, extra, or type-incompatible arguments). }
     - { code: AG-045, name: BlockConstantUnterminated, desc: Block constant missing closing delimiter line >>. }
-    - { code: AG-046, name: BlockConstantTypeUnknown, desc: Block constant uses unknown <BLOCK_TYPE>; expected JSON, TEXT, or YAML. }
+    - { code: AG-046, name: BlockConstantTypeUnknown, desc: Block constant uses unknown <BLOCK_TYPE>; expected JSON, TEXT, YAML, or CSV. }
+    - { code: AG-047, name: BadYAML, desc: Invalid YAML block constant body. }
+    - { code: AG-048, name: BadCSV, desc: Invalid CSV block constant body (parse failure, invalid header, ragged rows, or invalid cell). }
 
   warnings:
     - { code: AG-W01, name: SymbolNotUsed, desc: Defined but never used. }

@@ -85,7 +85,7 @@ The core abstraction is a structured envelope with seven ordered sections, from 
 ```
 skill/agnostic-prompt-standard/
 ├── assets/
-│   ├── constants/          # Constant syntax examples (JSON, TEXT blocks)
+│   ├── constants/          # Constant syntax examples (JSON, TEXT, CSV blocks)
 │   └── formats/            # Output format templates (tables, outlines, etc.)
 ├── platforms/
 │   ├── vscode-copilot/     # VS Code / Copilot adapter
@@ -141,6 +141,8 @@ python tools/sync_payload.py       # Sync skill to CLI payloads
 python tools/check_versions.py     # Verify version consistency
 python tools/check_skill_links.py  # Check skill link integrity
 python tools/bump_version.py X.Y.Z # Update version across all files
+python tools/test_bump_version.py  # Run bump_version unit tests
+python tools/generate-decision-index.py  # Generate ADR decision index
 ```
 
 ### Testing

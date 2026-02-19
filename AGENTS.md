@@ -84,6 +84,7 @@ skill/
       constants/
         constants-json-block-v1.0.0.example.md    JSON block constant syntax example
         constants-text-block-v1.0.0.example.md    TEXT block constant syntax example
+        constants-csv-block-v1.0.0.example.md     CSV block constant syntax example
       formats/
         format-code-changes-full-v1.0.0.example.md        Full file code changes template
         format-code-map-v1.0.0.example.md                 Code snippets with source links
@@ -93,6 +94,7 @@ skill/
         format-ideation-list-v1.0.0.example.md            Structured brainstorming ideas format
         format-link-manifest-v1.0.0.example.md            Link manifest format template
         format-markdown-table-v1.0.0.example.md           Process results table format
+        format-smeac-plan-v1.0.0.example.md               SMEAC-style plan format
         format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
     platforms/
       claude-code/

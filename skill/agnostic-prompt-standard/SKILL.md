@@ -8,7 +8,7 @@ metadata:
   co_authors: "Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
   framework_revision: "1.1.11"
-  last_updated: "2026-01-15"
+  last_updated: "2026-02-18"
 ---
 
 # Agnostic Prompt Standard (APS) v1.0 — Skill Entry
@@ -37,6 +37,7 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
   - `constants/` — example constants blocks.
     - `constants-json-block-v1.0.0.example.md`
     - `constants-text-block-v1.0.0.example.md`
+    - `constants-csv-block-v1.0.0.example.md`
   - `formats/` — example format blocks.
     - `format-code-changes-full-v1.0.0.example.md`
     - `format-code-map-v1.0.0.example.md`

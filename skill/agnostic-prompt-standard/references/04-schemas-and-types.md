@@ -49,7 +49,7 @@ Placeholders and WHERE sections are normative (see also **02 Linting and formatt
 - Every `<format>` body MUST end with a `WHERE:` section that defines each placeholder exactly
   once.
 - Each WHERE definition line MUST begin with `- <PLACEHOLDER> …` and normatively constrain the
-  placeholder (e.g., “is …”, “∈ { … }”, “matches …”, “format: …”, “example: …”).
+  placeholder (e.g., “is …”, “∈ { … }”, “matches …”, “example: …”).
 - No placeholder may appear in the body if it is not defined in WHERE → `AG-042`.
 - No placeholder may be defined in WHERE if it does not appear in the body → `AG-042`.
 - Any non-`<…>` placeholder notation (e.g., `{placeholder}`, `$PLACEHOLDER`) is forbidden →
@@ -132,4 +132,4 @@ Style guidelines:
 
 - JSON block constant example: [../assets/constants/constants-json-block-v1.0.0.example.md](../assets/constants/constants-json-block-v1.0.0.example.md)
 - TEXT block constant example: [../assets/constants/constants-text-block-v1.0.0.example.md](../assets/constants/constants-text-block-v1.0.0.example.md)
-
+- CSV block constant example: [../assets/constants/constants-csv-block-v1.0.0.example.md](../assets/constants/constants-csv-block-v1.0.0.example.md)
