@@ -6,11 +6,7 @@ Updates:
 - packages/aps-cli-node/package.json version
 - packages/aps-cli-py/pyproject.toml [project].version
 - packages/aps-cli-py/src/aps_cli/__init__.py __version__
-- Platform agent templates (frontmatter + file names)
-
-The description frontmatter in agent templates is composed from the manifest
-pattern plus an authors suffix read from SKILL.md metadata (author, co_authors,
-repository).
+- Platform agent templates (frontmatter + file names) via adaptor.md
 
 Usage:
     python tools/bump_version.py 1.2.3       # Update all files to 1.2.3
@@ -120,13 +116,8 @@ def update_python_module_version(init_py: Path, new_version: str) -> None:
 
 
 def read_skill_metadata(skill_md: Path) -> dict[str, str]:
-    """Read author, co_authors, and repository from SKILL.md frontmatter.
-
-    Returns a dict with keys: author, co_authors, repository.
-    Missing fields return empty strings.
-    """
+    """Read author, co_authors, and repository from SKILL.md frontmatter."""
     text = skill_md.read_text(encoding="utf-8")
-
     result: dict[str, str] = {"author": "", "co_authors": "", "repository": ""}
 
     m = re.search(r'^\s*author:\s*"([^"]*)"', text, flags=re.MULTILINE)
@@ -145,13 +136,7 @@ def read_skill_metadata(skill_md: Path) -> dict[str, str]:
 
 
 def build_authors_suffix(metadata: dict[str, str]) -> str:
-    """Compose the authors/URL suffix for agent description frontmatter.
-
-    Given metadata with author, co_authors, and repository, produces a string
-    like: "Author: Alice. Co-authors: Bob, Carol. URL: https://..."
-
-    Returns empty string if no author is set.
-    """
+    """Compose the authors/URL suffix for agent description frontmatter."""
     parts: list[str] = []
 
     author = metadata.get("author", "")
@@ -160,7 +145,6 @@ def build_authors_suffix(metadata: dict[str, str]) -> str:
 
     co_authors = metadata.get("co_authors", "")
     if co_authors:
-        # SKILL.md uses semicolons; descriptions use commas
         names = ", ".join(name.strip() for name in co_authors.split(";") if name.strip())
         parts.append(f"Co-authors: {names}.")
 
@@ -171,26 +155,49 @@ def build_authors_suffix(metadata: dict[str, str]) -> str:
     return " ".join(parts)
 
 
+# --- Adaptor.md parsing (minimal, for AGENT_VERSIONING) ---
+
+
+def _parse_adaptor_json_block(text: str, key: str) -> dict[str, Any] | None:
+    """Extract a JSON<< >> block constant from adaptor.md text."""
+    pattern = rf'{re.escape(key)}:\s*JSON<<\r?\n(.*?)>>'
+    m = re.search(pattern, text, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+
+
+def _update_adaptor_json_block(text: str, key: str, new_data: dict[str, Any]) -> str:
+    """Replace a JSON<< >> block constant in adaptor.md text."""
+    pattern = rf'({re.escape(key)}:\s*JSON<<\r?\n)(.*?)(>>)'
+    replacement = rf'\g<1>{json.dumps(new_data, indent=2)}\n\g<3>'
+    return re.sub(pattern, replacement, text, flags=re.DOTALL)
+
+
 # --- Platform agent versioning ---
 
 
-def load_platform_manifests(platforms_dir: Path) -> list[tuple[str, Path, dict[str, Any]]]:
-    """Load all platform manifests that have agentVersioning config."""
+def load_platform_versioning_configs(
+    platforms_dir: Path,
+) -> list[tuple[str, Path, dict[str, Any]]]:
+    """Load agent versioning config from adaptor.md."""
     results = []
     if not platforms_dir.exists():
         return results
     for platform_dir in platforms_dir.iterdir():
         if not platform_dir.is_dir() or platform_dir.name.startswith("_"):
             continue
-        manifest_path = platform_dir / "manifest.json"
-        if not manifest_path.exists():
-            continue
-        try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            if "agentVersioning" in manifest:
-                results.append((platform_dir.name, platform_dir, manifest))
-        except (json.JSONDecodeError, OSError):
-            continue
+
+        adaptor_path = platform_dir / "adaptor.md"
+        if adaptor_path.exists():
+            text = adaptor_path.read_text(encoding="utf-8")
+            versioning = _parse_adaptor_json_block(text, "AGENT_VERSIONING")
+            if versioning:
+                results.append((platform_dir.name, platform_dir, versioning))
+                continue
     return results
 
 
@@ -205,21 +212,19 @@ def expand_version_pattern(pattern: str, major: str, minor: str, patch: str) -> 
 
 def find_existing_agent_file(platform_dir: Path, template_config: dict[str, Any]) -> Path | None:
     """Find the current agent file, whether unversioned or previously versioned."""
-    current_path_rel = template_config.get("currentPath")
+    # adaptor.md uses snake_case; manifest.json uses camelCase
+    current_path_rel = template_config.get("current_path") or template_config.get("currentPath")
     path_pattern = template_config.get("path", "")
 
-    # Try unversioned path first
     if current_path_rel:
         current_path = platform_dir / current_path_rel
         if current_path.exists():
             return current_path
 
-    # Try to find existing versioned file
     if path_pattern:
         glob_pattern = path_pattern.replace("{major}", "*").replace("{minor}", "*").replace("{patch}", "*")
         matches = list(platform_dir.glob(glob_pattern))
         if matches:
-            # Return the most recently modified one
             return max(matches, key=lambda p: p.stat().st_mtime)
 
     return None
@@ -233,11 +238,10 @@ def update_agent_frontmatter(
     patch: str,
     authors_suffix: str = "",
 ) -> bool:
-    """Update frontmatter fields in an agent file based on platform config.
+    """Update frontmatter fields in an agent file.
 
-    For ``description`` fields, the expanded pattern is joined with the
-    *authors_suffix* (read from SKILL.md) so author metadata is preserved
-    across version bumps.
+    Handles both adaptor.md style (name_pattern/description_pattern)
+    and manifest.json style (name.pattern/description.pattern).
     """
     if not file_path.exists():
         return False
@@ -245,22 +249,37 @@ def update_agent_frontmatter(
     text = file_path.read_text(encoding="utf-8")
     updated = text
 
-    for field, config in frontmatter_config.items():
-        if "pattern" not in config:
-            continue
-        new_value = expand_version_pattern(config["pattern"], major, minor, patch)
+    # Normalize config: support both adaptor.md and manifest.json key styles
+    normalized: dict[str, dict[str, str]] = {}
+    for field_key, config in frontmatter_config.items():
+        if isinstance(config, dict):
+            if "pattern" in config:
+                normalized[field_key] = config
+            else:
+                # Nested format: { name: { pattern: "..." } }
+                for sub_key, sub_val in config.items():
+                    if isinstance(sub_val, dict) and "pattern" in sub_val:
+                        normalized[sub_key] = sub_val
+        elif isinstance(config, str) and field_key.endswith("_pattern"):
+            # adaptor.md style: name_pattern, description_pattern
+            actual_field = field_key.replace("_pattern", "")
+            normalized[actual_field] = {"pattern": config}
 
-        # For description fields, append the authors suffix
-        if field == "description" and authors_suffix:
+    for field_name, config in normalized.items():
+        pattern = config.get("pattern", "")
+        if not pattern:
+            continue
+        new_value = expand_version_pattern(pattern, major, minor, patch)
+
+        if field_name == "description" and authors_suffix:
             new_value = f"{new_value} {authors_suffix}"
 
         # Match YAML frontmatter field with quoted value
-        pattern_quoted = rf'^({field}:\s*)"[^"]*"'
+        pattern_quoted = rf'^({field_name}:\s*)"[^"]*"'
         if re.search(pattern_quoted, updated, flags=re.MULTILINE):
             updated = re.sub(pattern_quoted, rf'\1"{new_value}"', updated, flags=re.MULTILINE)
         else:
-            # Try unquoted value (for fields like name in Claude Code)
-            pattern_unquoted = rf'^({field}:\s*)(\S[^\n]*)$'
+            pattern_unquoted = rf'^({field_name}:\s*)(\S[^\n]*)$'
             updated = re.sub(pattern_unquoted, rf'\1{new_value}', updated, flags=re.MULTILINE)
 
     if updated != text:
@@ -287,14 +306,29 @@ def rename_agent_file(
     return source_path
 
 
+def _update_adaptor_versioning_current_path(
+    platform_dir: Path, new_rel: str, template_path_pattern: str
+) -> None:
+    """Update the current_path for a specific template in the AGENT_VERSIONING block."""
+    adaptor_path = platform_dir / "adaptor.md"
+    if not adaptor_path.exists():
+        return
+    text = adaptor_path.read_text(encoding="utf-8")
+    versioning = _parse_adaptor_json_block(text, "AGENT_VERSIONING")
+    if not versioning:
+        return
+    for tmpl in versioning.get("templates", []):
+        if tmpl.get("path") == template_path_pattern:
+            tmpl["current_path"] = new_rel
+            break
+    updated = _update_adaptor_json_block(text, "AGENT_VERSIONING", versioning)
+    adaptor_path.write_text(updated, encoding="utf-8")
+
+
 def update_platform_agents(
     platforms_dir: Path, new_version: str, authors_suffix: str = ""
 ) -> list[str]:
-    """Update all platform agent templates with new version.
-
-    The *authors_suffix* is appended to description fields so author metadata
-    from SKILL.md is carried through across bumps.
-    """
+    """Update all platform agent templates with new version."""
     match = SEMVER_RE.match(new_version)
     if not match:
         return []
@@ -302,35 +336,33 @@ def update_platform_agents(
     major, minor, patch = match.groups()
     updated_files = []
 
-    for platform_id, platform_dir, manifest in load_platform_manifests(platforms_dir):
-        versioning = manifest.get("agentVersioning", {})
+    for platform_id, platform_dir, versioning in load_platform_versioning_configs(platforms_dir):
         templates = versioning.get("templates", [])
 
         for template in templates:
+            # Normalize frontmatter config from both adaptor.md and manifest.json styles
             frontmatter_config = template.get("frontmatter", {})
 
-            # Find the source file
             source_path = find_existing_agent_file(platform_dir, template)
             if not source_path:
                 print(f"  Warning: No agent file found for {platform_id}", file=sys.stderr)
                 continue
 
-            # Update frontmatter (with authors suffix for descriptions)
             frontmatter_updated = update_agent_frontmatter(
                 source_path, frontmatter_config, major, minor, patch, authors_suffix
             )
 
-            # Rename file if path pattern includes version
             new_path = rename_agent_file(platform_dir, template, source_path, major, minor, patch)
 
-            # Update currentPath in manifest so next bump finds the file
+            # Update current_path in adaptor.md
             if new_path and new_path != source_path:
                 new_rel = str(new_path.relative_to(platform_dir)).replace("\\", "/")
-                template["currentPath"] = new_rel
-                manifest_path = platform_dir / "manifest.json"
-                manifest_path.write_text(
-                    json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
-                )
+
+                adaptor_path = platform_dir / "adaptor.md"
+                if adaptor_path.exists():
+                    _update_adaptor_versioning_current_path(
+                        platform_dir, new_rel, template["path"]
+                    )
 
             if new_path:
                 updated_files.append(str(new_path))
@@ -354,7 +386,6 @@ def main() -> int:
     init_py = repo_root / "packages" / "aps-cli-py" / "src" / "aps_cli" / "__init__.py"
     platforms_dir = repo_root / "skill" / "agnostic-prompt-standard" / "platforms"
 
-    # Read current versions
     versions = {
         "skill": read_skill_version(skill_md),
         "node": read_node_version(pkg_json),
@@ -393,11 +424,9 @@ def main() -> int:
     print(f"  - {pyproject}")
     print(f"  - {init_py}")
 
-    # Read authors metadata from SKILL.md and compose suffix
     metadata = read_skill_metadata(skill_md)
     authors_suffix = build_authors_suffix(metadata)
 
-    # Update platform agent templates
     agent_updates = update_platform_agents(platforms_dir, new_version, authors_suffix)
     if agent_updates:
         print("\nPlatform agent templates updated:")
