@@ -184,3 +184,19 @@ Run `python tools/generate_decision_index.py` to regenerate.
 **D045** — Ambiguity Resolution  
 : When user intent is ambiguous, the agent asks which type they want instead of guessing.  
 : *Source:* [ADR-0008 §4](0008-aps-agent-dual-artifact-generation.md#4-ambiguity-resolution)
+
+**D046** — Single adaptor.md per Platform  
+: Each platform has exactly one `adaptor.md` file using the APS envelope format (`<instructions>`, `<constants>`, `<formats>`) as its single source of truth for all configuration, tools, and format contracts.  
+: *Source:* [ADR-0009 §1](0009-adaptor-md-single-source-of-truth.md#1-single-adaptormd-per-platform)
+
+**D047** — Remove Manifest Fallback  
+: CLIs load platform configuration only from `adaptor.md`, with no fallback to `manifest.json`. If `adaptor.md` is missing or unparseable, the platform is skipped.  
+: *Source:* [ADR-0009 §2](0009-adaptor-md-single-source-of-truth.md#2-remove-manifest-fallback)
+
+**D048** — Delete Legacy Files  
+: Remove `manifest.json`, `tools-registry.json`, `frontmatter/` directories, `_schemas/` directory, and per-platform `README.md` files from all platform directories.  
+: *Source:* [ADR-0009 §3](0009-adaptor-md-single-source-of-truth.md#3-delete-legacy-files)
+
+**D049** — Block Constants for Structured Data  
+: Use `CSV<<` block constants for tool registries and `JSON<<` block constants for agent versioning configuration within `adaptor.md`.  
+: *Source:* [ADR-0009 §4](0009-adaptor-md-single-source-of-truth.md#4-block-constants-for-structured-data)

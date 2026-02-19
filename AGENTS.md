@@ -98,43 +98,25 @@ skill/
         format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
     platforms/
       claude-code/
-        frontmatter/
-          agent-frontmatter.md                YAML template for agent files
-          rules-frontmatter.md                YAML template for rules files
+        adaptor.md                            Platform adapter (single source of truth)
         templates/
           .claude/
             agents/
               aps-v{VERSION}.md               APS agent protocol template (versioned)
-        manifest.json                         Claude Code file discovery rules
-        README.md                             Adapter quickstart and usage guide
-        tools-registry.json                   Tool names, sets, and mappings
       opencode/
-        manifest.json                         OpenCode file discovery rules
-        tools-registry.json                   Tool registry stub (placeholder)
+        adaptor.md                            Platform adapter (single source of truth)
       vscode-copilot/
-        frontmatter/
-          agent-frontmatter.md                YAML template for agent files
-          instructions-frontmatter.md         YAML template for instructions files
-          prompt-frontmatter.md               YAML template for prompt files
-          skill-frontmatter.md                YAML template for skill files
+        adaptor.md                            Platform adapter (single source of truth)
         templates/
           .github/
             agents/
               aps-v{VERSION}.agent.md         APS prompt protocol agent template (versioned)
-        manifest.json                         VS Code file discovery rules
-        README.md                             Adapter quickstart and usage guide
-        tools-registry.json                   Tool names, sets, and mappings
-      _schemas/
-        platform-manifest.schema.json         JSON Schema for manifest validation
-        tools-registry.schema.json            JSON Schema for tools registry
       _template/
+        adaptor.md                            Starter adapter for new platforms
         templates/
           .github/
             agents/
               .gitkeep                        Placeholder for agent templates
-        manifest.json                         Starter manifest for new adapters
-        README.md                             Instructions to create new adapters
-        tools-registry.json                   Empty tools registry template
       README.md                               Platforms overview and adapter contract
     references/
       00-structure.md                         Prompt sections and envelope rules
