@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import json
 import os
 import shutil
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Optional
 
-from .schemas import safe_parse_platform_manifest
+from .parsers.adaptor import parse_adaptor_md, get_string, get_string_array
 
 SKILL_ID = "agnostic-prompt-standard"
 
-# Explicit ordering for known adapters in UI
 DEFAULT_ADAPTER_ORDER: tuple[str, ...] = ("vscode-copilot", "claude-code", "opencode")
 
 KnownAdapterId = Literal["vscode-copilot", "claude-code", "opencode"]
@@ -74,21 +71,13 @@ def pick_workspace_root(cli_root: Optional[str]) -> Optional[Path]:
 
 
 def default_project_skill_path(repo_root: Path, *, claude: bool = False) -> Path:
-    """Return the project-skill path for the detected agent ecosystem.
-
-    - Default: `.github/skills/<skill-id>/` (Copilot Agent Skills)
-    - Claude:  `.claude/skills/<skill-id>/` (Claude platform)
-    """
+    """Return the project-skill path."""
     base = repo_root / (".claude" if claude else ".github") / "skills"
     return base / SKILL_ID
 
 
 def default_personal_skill_path(*, claude: bool = False) -> Path:
-    """Return the per-user skill path.
-
-    - Default: `~/.copilot/skills/<skill-id>/`
-    - Claude:  `~/.claude/skills/<skill-id>/`
-    """
+    """Return the per-user skill path."""
     base = Path.home() / (".claude" if claude else ".copilot") / "skills"
     return base / SKILL_ID
 
@@ -103,20 +92,10 @@ def compute_skill_destinations(
     workspace_root: Optional[Path],
     selected_platforms: list[str],
 ) -> list[Path]:
-    """Compute skill installation destinations based on selected platforms.
-
-    Args:
-        scope: Installation scope (repo or personal)
-        workspace_root: Workspace root path (required for repo scope)
-        selected_platforms: List of selected platform IDs
-
-    Returns:
-        List of unique destination paths
-    """
+    """Compute skill installation destinations based on selected platforms."""
     wants_claude = any(is_claude_platform(p) for p in selected_platforms)
     wants_non_claude = any(not is_claude_platform(p) for p in selected_platforms)
 
-    # Default to non-Claude location if no adapters selected
     include_claude = wants_claude
     include_non_claude = wants_non_claude or len(selected_platforms) == 0
 
@@ -163,18 +142,12 @@ def infer_platform_id(workspace_root: Path) -> Optional[str]:
 
 
 def resolve_payload_skill_dir() -> Path:
-    """Locate the bundled APS skill directory.
-
-    Priority:
-    1) Installed package payload: aps_cli/payload/agnostic-prompt-standard
-    2) Repo checkout: ../../../../skill/agnostic-prompt-standard (relative to this file)
-    """
+    """Locate the bundled APS skill directory."""
     here = Path(__file__).resolve().parent
     packaged = here / "payload" / SKILL_ID
     if packaged.is_dir():
         return packaged
 
-    # repo fallback
     repo_root = Path(__file__).resolve().parents[4]
     dev = repo_root / "skill" / SKILL_ID
     if dev.is_dir():
@@ -185,8 +158,46 @@ def resolve_payload_skill_dir() -> Path:
     )
 
 
+def _markers_from_string_array(raw: list[str]) -> tuple[DetectionMarker, ...]:
+    """Convert detection marker strings to DetectionMarker objects."""
+    markers: list[DetectionMarker] = []
+    for m in raw:
+        is_dir = m.endswith("/")
+        rel_path = m.rstrip("/") if is_dir else m
+        markers.append(
+            DetectionMarker(kind="dir" if is_dir else "file", label=m, rel_path=rel_path)
+        )
+    return tuple(markers)
+
+
+def _load_platform_from_adaptor(
+    platform_dir: Path, dir_name: str
+) -> Optional[Platform]:
+    """Load a platform from its adaptor.md file."""
+    adaptor_path = platform_dir / "adaptor.md"
+    if not adaptor_path.exists():
+        return None
+
+    try:
+        data = parse_adaptor_md(adaptor_path)
+        raw_markers = data.constants.get("DETECTION_MARKERS")
+        detection_markers: tuple[DetectionMarker, ...] = ()
+        if isinstance(raw_markers, list):
+            str_markers = [m for m in raw_markers if isinstance(m, str)]
+            detection_markers = _markers_from_string_array(str_markers)
+
+        return Platform(
+            platform_id=get_string(data.constants, "PLATFORM_ID", dir_name),
+            display_name=get_string(data.constants, "DISPLAY_NAME", dir_name),
+            adapter_version=get_string(data.constants, "ADAPTER_VERSION") or None,
+            detection_markers=detection_markers,
+        )
+    except Exception:
+        return None
+
+
 def load_platforms(skill_dir: Path) -> list[Platform]:
-    """Load all platform adapters from the skill's platforms directory."""
+    """Load all platform adapters from adaptor.md files."""
     platforms_dir = skill_dir / "platforms"
     out: list[Platform] = []
 
@@ -195,50 +206,11 @@ def load_platforms(skill_dir: Path) -> list[Platform]:
             continue
         if entry.name.startswith("_"):
             continue
-        manifest_path = entry / "manifest.json"
-        if not manifest_path.exists():
-            continue
 
-        try:
-            raw = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
+        platform = _load_platform_from_adaptor(entry, entry.name)
 
-        # Validate with Pydantic
-        manifest, error = safe_parse_platform_manifest(raw)
-        if error:
-            print(
-                f"Warning: Invalid platform manifest at {manifest_path}: {error}",
-                file=sys.stderr,
-            )
-            # Fall back to partial extraction
-            platform_id = raw.get("platformId", entry.name)
-            display_name = raw.get("displayName", entry.name)
-            adapter_version = raw.get("adapterVersion")
-            detection_markers: tuple[DetectionMarker, ...] = ()
-        else:
-            assert manifest is not None
-            platform_id = manifest.platform_id
-            display_name = manifest.display_name
-            adapter_version = manifest.adapter_version
-            # Get normalized detection markers from manifest
-            detection_markers = tuple(
-                DetectionMarker(
-                    kind=m.kind,  # type: ignore[arg-type]
-                    label=m.label,
-                    rel_path=m.rel_path,
-                )
-                for m in manifest.detection_markers
-            )
-
-        out.append(
-            Platform(
-                platform_id=platform_id,
-                display_name=display_name,
-                adapter_version=adapter_version,
-                detection_markers=detection_markers,
-            )
-        )
+        if platform is not None:
+            out.append(platform)
 
     return out
 
@@ -266,15 +238,7 @@ def _marker_exists(workspace_root: Path, marker: DetectionMarker) -> bool:
 def detect_adapters(
     workspace_root: Path, platforms: list[Platform]
 ) -> dict[str, AdapterDetection]:
-    """Detect which platform adapters are present in a workspace.
-
-    Args:
-        workspace_root: Workspace root directory
-        platforms: List of platforms with detection markers
-
-    Returns:
-        Dict mapping platform IDs to detection results
-    """
+    """Detect which platform adapters are present in a workspace."""
     out: dict[str, AdapterDetection] = {}
 
     for platform in platforms:
@@ -300,15 +264,7 @@ def format_detection_label(detection: AdapterDetection) -> str:
 
 
 def detect_platforms(workspace_root: Path, skill_dir: Path) -> list[str]:
-    """Detect all platforms with markers present in workspace (legacy API).
-
-    Args:
-        workspace_root: Path to workspace root
-        skill_dir: Path to skill directory with platform manifests
-
-    Returns:
-        List of detected platform IDs
-    """
+    """Detect all platforms with markers present in workspace (legacy API)."""
     platforms = load_platforms(skill_dir)
     detections = detect_adapters(workspace_root, platforms)
     return [pid for pid, det in detections.items() if det.detected]
@@ -345,17 +301,7 @@ def copy_template_tree(
     force: bool = False,
     filter_fn: Optional[Callable[[str], bool]] = None,
 ) -> list[str]:
-    """Copy template files individually with optional filtering.
-
-    Args:
-        src_dir: Source templates directory
-        dst_root: Destination root directory
-        force: Overwrite existing files
-        filter_fn: Callback (rel_path: str) -> bool; return False to skip
-
-    Returns:
-        List of relative paths that were copied
-    """
+    """Copy template files individually with optional filtering."""
     copied: list[str] = []
     for src_file in src_dir.rglob("*"):
         if not src_file.is_file():

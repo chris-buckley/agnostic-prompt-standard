@@ -1,57 +1,36 @@
-from __future__ import annotations
+"""Tests that every platform adapter has a valid adaptor.md."""
 
-import json
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SKILL_ROOT = REPO_ROOT / "skill" / "agnostic-prompt-standard"
-PLATFORMS_DIR = SKILL_ROOT / "platforms"
-SCHEMA_PATH = PLATFORMS_DIR / "_schemas" / "platform-manifest.schema.json"
+from aps_cli.parsers.adaptor import get_string, parse_adaptor_md
+
+PLATFORMS_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "skill"
+    / "agnostic-prompt-standard"
+    / "platforms"
+)
 
 
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+def test_every_platform_has_adaptor_md():
+    """Every non-underscore platform directory must have an adaptor.md file."""
+    for entry in sorted(PLATFORMS_DIR.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("_"):
+            continue
+        adaptor_path = entry / "adaptor.md"
+        assert adaptor_path.exists(), f"{entry.name}/ is missing adaptor.md"
 
 
-def test_platform_manifest_schema_requires_file_conventions() -> None:
-    schema = _read_json(SCHEMA_PATH)
-    required = schema.get("required")
-    assert isinstance(required, list), "schema.required must be a list"
-    assert "fileConventions" in required, (
-        'schema.required must include "fileConventions"'
-    )
-
-
-def test_every_platform_manifest_includes_file_conventions() -> None:
-    platform_dirs = [
-        p for p in PLATFORMS_DIR.iterdir() if p.is_dir() and p.name != "_schemas"
-    ]
-
-    for platform_dir in platform_dirs:
-        manifest_path = platform_dir / "manifest.json"
-        assert manifest_path.exists(), f"Missing manifest.json in {platform_dir.name}"
-
-        manifest = _read_json(manifest_path)
-        fc = manifest.get("fileConventions")
-        assert isinstance(fc, dict), (
-            f'Platform "{platform_dir.name}" must define fileConventions'
-        )
-
-        instructions = fc.get("instructions")
-        assert isinstance(instructions, list) and instructions, (
-            f'Platform "{platform_dir.name}" must define fileConventions.instructions array'
-        )
-
-
-def test_schema_enforces_min_items_on_instructions() -> None:
-    schema = _read_json(SCHEMA_PATH)
-    ins = (
-        schema.get("properties", {})
-        .get("fileConventions", {})
-        .get("properties", {})
-        .get("instructions")
-    )
-    assert ins is not None, "Schema must define fileConventions.instructions"
-    assert isinstance(ins.get("minItems"), int) and ins["minItems"] >= 1, (
-        "Schema must enforce minItems >= 1 on instructions"
-    )
+def test_every_adaptor_has_required_constants():
+    """Every adaptor.md must define PLATFORM_ID and DISPLAY_NAME constants."""
+    for entry in sorted(PLATFORMS_DIR.iterdir()):
+        if not entry.is_dir() or entry.name.startswith("_"):
+            continue
+        adaptor_path = entry / "adaptor.md"
+        if not adaptor_path.exists():
+            continue
+        data = parse_adaptor_md(adaptor_path)
+        pid = get_string(data.constants, "PLATFORM_ID")
+        name = get_string(data.constants, "DISPLAY_NAME")
+        assert pid, f"{entry.name}/adaptor.md is missing PLATFORM_ID constant"
+        assert name, f"{entry.name}/adaptor.md is missing DISPLAY_NAME constant"
