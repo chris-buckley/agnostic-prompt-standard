@@ -197,6 +197,18 @@ Run `python tools/generate_decision_index.py` to regenerate.
 : Remove `manifest.json`, `tools-registry.json`, `frontmatter/` directories, `_schemas/` directory, and per-platform `README.md` files from all platform directories.  
 : *Source:* [ADR-0009 §3](0009-adaptor-md-single-source-of-truth.md#3-delete-legacy-files)
 
-**D049** — Block Constants for Structured Data  
-: Use `CSV<<` block constants for tool registries and `JSON<<` block constants for agent versioning configuration within `adaptor.md`.  
+**D049** — Block Constants for Structured Data
+: Use `CSV<<` block constants for tool registries and `JSON<<` block constants for agent versioning configuration within `adaptor.md`.
 : *Source:* [ADR-0009 §4](0009-adaptor-md-single-source-of-truth.md#4-block-constants-for-structured-data)
+
+**D050** — Composite Asset Category
+: Introduce `assets/composites/` for reusable components that bundle both `<constants>` and `<formats>` in a single file where the format contract depends on the constants as its type vocabulary.
+: *Source:* [ADR-0010 §1](0010-composite-assets.md#1-composite-asset-category)
+
+**D051** — Self-Contained Envelope
+: Each composite is a self-contained APS envelope with `<constants>` defining the type vocabulary and `<formats>` defining the contract that references those constants.
+: *Source:* [ADR-0010 §2](0010-composite-assets.md#2-self-contained-envelope)
+
+**D052** — Composite Naming Convention
+: Composites use the existing `<name>-v<semver>.example.md` naming convention established by constants and formats assets.
+: *Source:* [ADR-0010 §3](0010-composite-assets.md#3-naming-convention)
