@@ -49,18 +49,16 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `format-markdown-table-v1.0.0.example.md`
     - `format-smeac-plan-v1.0.0.example.md`
     - `format-table-api-coverage-v1.0.0.example.md`
-- `platforms/` — **non-normative** platform adapters (file conventions, frontmatter, tool registries, templates).
+- `platforms/` — **non-normative** platform adapters. Each platform has a single `adaptor.md` file.
   - `README.md` — platforms overview and contract.
-  - `_schemas/` — JSON Schemas for adapter validation.
-    - `platform-manifest.schema.json`
-    - `tools-registry.schema.json`
   - `_template/` — skeleton for new platform adapters.
-    - `README.md`, `manifest.json`, `tools-registry.json`
+    - `adaptor.md`
+  - `claude-code/` — Claude Code CLI adapter.
+    - `adaptor.md` — platform constants, tool registry, and format contracts.
+  - `opencode/` — OpenCode adapter.
+    - `adaptor.md` — platform constants.
   - `vscode-copilot/` — VS Code + GitHub Copilot adapter.
-    - `README.md` — adapter quickstart and nuances.
-    - `manifest.json` — file discovery rules.
-    - `tools-registry.json` — tool names, sets, and renames.
-    - `frontmatter/` — copy/paste YAML frontmatter templates.
+    - `adaptor.md` — platform constants, tool registry, and format contracts.
 - `scripts/` — optional build / compile / lint scripts (empty by default).
 
 ---
@@ -75,4 +73,4 @@ Platform-specific details (file discovery, frontmatter dialects, tool naming) ar
 
 The initial adapter for VS Code + GitHub Copilot is at `platforms/vscode-copilot/`.
 
-→ See [platforms/vscode-copilot/README.md](platforms/vscode-copilot/README.md) for quickstart, file discovery, frontmatter templates, and tool naming.
+→ See [platforms/vscode-copilot/adaptor.md](platforms/vscode-copilot/adaptor.md) for platform constants, tool registry, and format contracts.

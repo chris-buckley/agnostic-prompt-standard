@@ -9,26 +9,34 @@ APS is designed to be **platform-agnostic**, but real hosts (IDEs, agent runtime
 
 This folder contains **platform adapters** that describe those differences *without changing the APS v1.0 spec*.
 
-## Adapter layout (recommended)
+## Adapter layout
+
+Each platform adapter is a single `adaptor.md` file plus an optional `templates/` directory:
 
 ```
 platforms/
-  _schemas/                       # JSON Schemas for adapter files
   _template/                      # skeleton for new adapters
+    adaptor.md                    # template adaptor.md
+    templates/                    # optional installable agent files
   <platform-id>/
-    README.md
-    manifest.json                 # validates against _schemas/platform-manifest.schema.json
-    tools-registry.json           # validates against _schemas/tools-registry.schema.json
-    frontmatter/                  # copy/paste blocks for this platform
+    adaptor.md                    # single source of truth
+    templates/                    # optional installable agent files
+      .claude/agents/             # (claude-code) or
+      .github/agents/             # (vscode-copilot)
 ```
+
+The `adaptor.md` file contains three APS sections:
+
+1. `<instructions>` — platform-specific generation instructions
+2. `<constants>` — all metadata: platform ID, detection markers, file conventions, tool registries, agent versioning
+3. `<formats>` — frontmatter and output format contracts
 
 ## Add a new platform adapter
 
 1. Copy `platforms/_template/` to `platforms/<platform-id>/`
-2. Fill in:
-   - `manifest.json` (file discovery rules + docs links)
-   - `tools-registry.json` (available tools + naming + risk tags)
-3. Do **not** change `references/` unless you are intentionally publishing an APS spec revision.
+2. Fill in `adaptor.md` with platform-specific constants and formats
+3. Optionally add a `templates/` directory with installable agent files
+4. Do **not** change `references/` unless you are intentionally publishing an APS spec revision
 
 ## Contract
 
@@ -42,4 +50,3 @@ Adapters are intended to **map** the APS standard to a host platform. They are *
 We do not provide generic project scaffolding (like `settings.json` or root `CLAUDE.md` templates).
 
 > See [ADR 0001: Adapter Scope](https://github.com/chris-buckley/agnostic-prompt-standard/blob/main/docs/adr/0001-adapter-scope-no-scaffolding.md)
-
