@@ -7,7 +7,7 @@ metadata:
   author: "Christopher Buckley"
   co_authors: "Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.11"
+  framework_revision: "1.1.12"
   last_updated: "2026-02-18"
 ---
 

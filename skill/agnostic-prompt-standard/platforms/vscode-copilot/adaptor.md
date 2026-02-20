@@ -83,7 +83,7 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-      "current_path": "templates/.github/agents/aps-v1.1.11.agent.md",
+      "current_path": "templates/.github/agents/aps-v1.1.12.agent.md",
       "frontmatter": {
         "name_pattern": "APS v{major}.{minor}.{patch} Agent",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+write+lint."
