@@ -1,8 +1,6 @@
 """Tests for the adaptor.md parser."""
 
 from aps_cli.parsers.adaptor import (
-    AdaptorData,
-    FormatContract,
     get_string,
     get_string_array,
     parse_adaptor_md_string,
@@ -21,6 +19,8 @@ ADAPTER_VERSION: "2.0.0"
 LAST_UPDATED: "2026-02-19"
 ENABLED: true
 MAX_RETRIES: 3
+SCIENTIFIC: 1e3
+CONST_REFS: [PLATFORM_ID, DISPLAY_NAME]
 
 INSTRUCTION_FILE_PATHS: ["./README.md", "./docs/*.md"]
 DETECTION_MARKERS: [".test", "test.json"]
@@ -53,6 +53,10 @@ Content here.
 WHERE:
 - <TITLE> is String; the title.
 </format>
+
+<format name="Alt Format" purpose="Attr order test." id="ALT_FORMAT_V1">
+Alt content.
+</format>
 </formats>
 """
 
@@ -80,10 +84,20 @@ def test_parses_number_constants():
     assert data.constants["MAX_RETRIES"] == 3
 
 
+def test_parses_scientific_numbers():
+    data = parse_adaptor_md_string(SAMPLE_ADAPTOR)
+    assert data.constants["SCIENTIFIC"] == 1000.0
+
+
 def test_parses_inline_arrays():
     data = parse_adaptor_md_string(SAMPLE_ADAPTOR)
     assert data.constants["INSTRUCTION_FILE_PATHS"] == ["./README.md", "./docs/*.md"]
     assert data.constants["DETECTION_MARKERS"] == [".test", "test.json"]
+
+
+def test_parses_identifier_arrays():
+    data = parse_adaptor_md_string(SAMPLE_ADAPTOR)
+    assert data.constants["CONST_REFS"] == ["PLATFORM_ID", "DISPLAY_NAME"]
 
 
 def test_parses_text_blocks():
@@ -112,6 +126,16 @@ def test_parses_csv_blocks():
     assert tools[1]["name"] == "Write"
 
 
+def test_parses_crlf_in_csv_blocks():
+    data = parse_adaptor_md_string(
+        "<constants>\r\nTOOLS: CSV<<\r\nname,risk\r\nRead,low\r\n>>\r\n</constants>"
+    )
+    tools = data.constants["TOOLS"]
+    assert isinstance(tools, list)
+    assert tools[0]["name"] == "Read"
+    assert tools[0]["risk"] == "low"
+
+
 def test_parses_formats():
     data = parse_adaptor_md_string(SAMPLE_ADAPTOR)
     assert "TEST_FORMAT_V1" in data.formats
@@ -119,6 +143,15 @@ def test_parses_formats():
     assert fmt.name == "Test Format"
     assert fmt.purpose == "A test format contract."
     assert "WHERE:" in fmt.body
+
+
+def test_format_attributes_any_order():
+    data = parse_adaptor_md_string(SAMPLE_ADAPTOR)
+    assert "ALT_FORMAT_V1" in data.formats
+    fmt = data.formats["ALT_FORMAT_V1"]
+    assert fmt.name == "Alt Format"
+    assert fmt.purpose == "Attr order test."
+    assert "Alt content." in fmt.body
 
 
 def test_get_string_helper():
@@ -145,10 +178,12 @@ def test_parses_real_claude_code_adaptor():
     from pathlib import Path
 
     repo_root = Path(__file__).resolve().parents[3]
-    adaptor_path = repo_root / "skill" / "agnostic-prompt-standard" / "platforms" / "claude-code" / "adaptor.md"
+    adaptor_path = (
+        repo_root / "skill" / "agnostic-prompt-standard" / "platforms" / "claude-code" / "adaptor.md"
+    )
 
     if not adaptor_path.exists():
-        return  # Skip if not in repo context
+        return
 
     from aps_cli.parsers.adaptor import parse_adaptor_md
 

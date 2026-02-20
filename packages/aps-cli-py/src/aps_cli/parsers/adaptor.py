@@ -16,16 +16,11 @@ from typing import Any, Union
 
 ConstantValue = Union[str, int, float, bool, list, dict]
 
-SECTION_RE = re.compile(
-    r"<(instructions|constants|formats)>(.*?)</\1>", re.DOTALL
-)
-FORMAT_TAG_RE = re.compile(
-    r'<format\s+id="([^"]+)"'
-    r'(?:\s+name="([^"]*)")?'
-    r'(?:\s+purpose="([^"]*)")?\s*>'
-    r"(.*?)</format>",
-    re.DOTALL,
-)
+SECTION_RE = re.compile(r"<(instructions|constants|formats)>(.*?)</\1>", re.DOTALL)
+FORMAT_BLOCK_RE = re.compile(r"<format\b([^>]*)>(.*?)</format>", re.DOTALL)
+FORMAT_ATTR_RE = re.compile(r'\b(id|name|purpose)="([^"]*)"')
+NUMBER_RE = re.compile(r"^-?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$")
+INTEGER_RE = re.compile(r"^-?\d+$")
 
 
 @dataclass(frozen=True)
@@ -70,10 +65,33 @@ def _parse_csv_block(body: str) -> list[dict[str, str]]:
     return rows
 
 
+def _parse_identifier_array(raw: str) -> list[str] | None:
+    s = raw.strip()
+    if not (s.startswith("[") and s.endswith("]")):
+        return None
+
+    inner = s[1:-1].strip()
+    if not inner:
+        return []
+
+    parts = [p.strip() for p in inner.split(",") if p.strip()]
+    out: list[str] = []
+    for part in parts:
+        if (part.startswith('"') and part.endswith('"')) or (part.startswith("'") and part.endswith("'")):
+            out.append(part[1:-1])
+            continue
+
+        if not re.match(r"^[A-Z][A-Z0-9_]*$", part):
+            return None
+        out.append(part)
+
+    return out
+
+
 def _parse_constants(raw: str) -> dict[str, ConstantValue]:
     """Parse the constants section text."""
     constants: dict[str, ConstantValue] = {}
-    lines = raw.split("\n")
+    lines = raw.splitlines()
     i = 0
 
     while i < len(lines):
@@ -92,7 +110,6 @@ def _parse_constants(raw: str) -> dict[str, ConstantValue]:
         key = trimmed[:colon_idx].strip()
         rest = trimmed[colon_idx + 1 :].strip()
 
-        # Block constants
         block_match = re.match(r"^(JSON|TEXT|CSV|YAML)<<$", rest)
         if block_match:
             block_type = block_match.group(1)
@@ -117,24 +134,20 @@ def _parse_constants(raw: str) -> dict[str, ConstantValue]:
                 constants[key] = body
             continue
 
-        # Inline array
         if rest.startswith("["):
             try:
                 constants[key] = json.loads(rest)
             except json.JSONDecodeError:
-                constants[key] = rest
+                parsed = _parse_identifier_array(rest)
+                constants[key] = parsed if parsed is not None else rest
             i += 1
             continue
 
-        # Quoted string
-        if (rest.startswith('"') and rest.endswith('"')) or (
-            rest.startswith("'") and rest.endswith("'")
-        ):
+        if (rest.startswith('"') and rest.endswith('"')) or (rest.startswith("'") and rest.endswith("'")):
             constants[key] = rest[1:-1]
             i += 1
             continue
 
-        # Boolean
         if rest == "true":
             constants[key] = True
             i += 1
@@ -144,18 +157,18 @@ def _parse_constants(raw: str) -> dict[str, ConstantValue]:
             i += 1
             continue
 
-        # Number
-        try:
-            if "." in rest:
-                constants[key] = float(rest)
-            else:
-                constants[key] = int(rest)
-            i += 1
-            continue
-        except ValueError:
-            pass
+        if NUMBER_RE.match(rest):
+            try:
+                num = float(rest)
+                if INTEGER_RE.match(rest):
+                    constants[key] = int(num)
+                else:
+                    constants[key] = num
+                i += 1
+                continue
+            except ValueError:
+                pass
 
-        # Bare string
         constants[key] = rest
         i += 1
 
@@ -165,39 +178,37 @@ def _parse_constants(raw: str) -> dict[str, ConstantValue]:
 def _parse_formats(raw: str) -> dict[str, FormatContract]:
     """Parse the formats section text."""
     formats: dict[str, FormatContract] = {}
-    for m in FORMAT_TAG_RE.finditer(raw):
-        fid = m.group(1)
+
+    for m in FORMAT_BLOCK_RE.finditer(raw):
+        attrs_raw = m.group(1) or ""
+        body = (m.group(2) or "").strip()
+
+        attrs: dict[str, str] = {}
+        for a in FORMAT_ATTR_RE.finditer(attrs_raw):
+            attrs[a.group(1)] = a.group(2) or ""
+
+        fid = attrs.get("id")
+        if not fid:
+            continue
+
         formats[fid] = FormatContract(
             id=fid,
-            name=m.group(2) or "",
-            purpose=m.group(3) or "",
-            body=(m.group(4) or "").strip(),
+            name=attrs.get("name", ""),
+            purpose=attrs.get("purpose", ""),
+            body=body,
         )
+
     return formats
 
 
 def parse_adaptor_md(file_path: Path) -> AdaptorData:
-    """Parse an adaptor.md file into structured data.
-
-    Args:
-        file_path: Path to the adaptor.md file.
-
-    Returns:
-        Parsed AdaptorData.
-    """
+    """Parse an adaptor.md file into structured data."""
     raw = file_path.read_text(encoding="utf-8")
     return parse_adaptor_md_string(raw)
 
 
 def parse_adaptor_md_string(raw: str) -> AdaptorData:
-    """Parse adaptor.md content string into structured data.
-
-    Args:
-        raw: Raw adaptor.md content.
-
-    Returns:
-        Parsed AdaptorData.
-    """
+    """Parse adaptor.md content string into structured data."""
     data = AdaptorData()
 
     for m in SECTION_RE.finditer(raw):

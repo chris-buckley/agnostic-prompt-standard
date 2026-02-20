@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 
 /**
- * Parsed constant value: string, number, boolean, array, or parsed block.
+ * Parsed constant value from adaptor.md.
  */
-export type ConstantValue = string | number | boolean | string[] | Record<string, unknown> | Record<string, unknown>[];
+export type ConstantValue = string | number | boolean | unknown[] | Record<string, unknown>;
 
 /**
  * Parsed format contract from adaptor.md.
@@ -25,15 +25,48 @@ export interface AdaptorData {
 }
 
 const SECTION_RE = /<(instructions|constants|formats)>([\s\S]*?)<\/\1>/g;
-const FORMAT_TAG_RE = /<format\s+id="([^"]+)"(?:\s+name="([^"]*)")?(?:\s+purpose="([^"]*)")?\s*>([\s\S]*?)<\/format>/g;
+const FORMAT_BLOCK_RE = /<format\b([^>]*)>([\s\S]*?)<\/format>/g;
+const FORMAT_ATTR_RE = /\b(id|name|purpose)="([^"]*)"/g;
+const NUMBER_RE = /^-?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$/;
+
+function splitLines(raw: string): string[] {
+  return raw.split(/\r\n|\n|\r/);
+}
+
+function parseIdentifierArray(raw: string): string[] | null {
+  const s = raw.trim();
+  if (!s.startsWith('[') || !s.endsWith(']')) return null;
+
+  const inner = s.slice(1, -1).trim();
+  if (!inner) return [];
+
+  const parts = inner
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const out: string[] = [];
+  for (const part of parts) {
+    const quoted =
+      (part.startsWith('"') && part.endsWith('"')) ||
+      (part.startsWith("'") && part.endsWith("'"));
+    if (quoted) {
+      out.push(part.slice(1, -1));
+      continue;
+    }
+
+    if (!/^[A-Z][A-Z0-9_]*$/.test(part)) return null;
+    out.push(part);
+  }
+
+  return out;
+}
 
 /**
  * Parse a CSV string into an array of objects keyed by header fields.
- * @param csv - Raw CSV text.
- * @returns Array of row objects.
  */
 function parseCsvBlock(csv: string): Record<string, string>[] {
-  const lines = csv.trim().split('\n').filter((l) => l.trim());
+  const lines = splitLines(csv.trim()).filter((l) => l.trim());
   if (lines.length < 1) return [];
 
   const headers = splitCsvRow(lines[0] ?? '');
@@ -47,6 +80,7 @@ function parseCsvBlock(csv: string): Record<string, string>[] {
     }
     rows.push(row);
   }
+
   return rows;
 }
 
@@ -80,31 +114,28 @@ function splitCsvRow(line: string): string[] {
       }
     }
   }
+
   cells.push(current);
   return cells;
 }
 
 /**
  * Parse the constants section of an adaptor.md file.
- * @param raw - Raw text inside <constants> tags.
- * @returns Map of constant names to parsed values.
  */
 function parseConstants(raw: string): Record<string, ConstantValue> {
   const constants: Record<string, ConstantValue> = {};
-  const lines = raw.split('\n');
+  const lines = splitLines(raw);
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i] ?? '';
     const trimmed = line.trim();
 
-    // Skip blanks and comments
     if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) {
       i++;
       continue;
     }
 
-    // Match KEY: VALUE or KEY: BLOCK
     const colonIdx = trimmed.indexOf(':');
     if (colonIdx === -1) {
       i++;
@@ -114,7 +145,6 @@ function parseConstants(raw: string): Record<string, ConstantValue> {
     const key = trimmed.slice(0, colonIdx).trim();
     const rest = trimmed.slice(colonIdx + 1).trim();
 
-    // Check for block constants: JSON<<, TEXT<<, CSV<<, YAML
     const blockMatch = rest.match(/^(JSON|TEXT|CSV|YAML)<<$/);
     if (blockMatch) {
       const blockType = blockMatch[1];
@@ -129,6 +159,7 @@ function parseConstants(raw: string): Record<string, ConstantValue> {
         bodyLines.push(bLine);
         i++;
       }
+
       const body = bodyLines.join('\n');
 
       if (blockType === 'JSON') {
@@ -140,32 +171,32 @@ function parseConstants(raw: string): Record<string, ConstantValue> {
       } else if (blockType === 'CSV') {
         constants[key] = parseCsvBlock(body);
       } else {
-        // TEXT or YAML: store as string
         constants[key] = body;
       }
+
       continue;
     }
 
-    // Inline array: [...]
     if (rest.startsWith('[')) {
       try {
         constants[key] = JSON.parse(rest) as ConstantValue;
       } catch {
-        // May contain unquoted constant refs; store as string
-        constants[key] = rest;
+        const parsed = parseIdentifierArray(rest);
+        constants[key] = parsed ?? rest;
       }
       i++;
       continue;
     }
 
-    // Quoted string
-    if ((rest.startsWith('"') && rest.endsWith('"')) || (rest.startsWith("'") && rest.endsWith("'"))) {
+    if (
+      (rest.startsWith('"') && rest.endsWith('"')) ||
+      (rest.startsWith("'") && rest.endsWith("'"))
+    ) {
       constants[key] = rest.slice(1, -1);
       i++;
       continue;
     }
 
-    // Boolean / number
     if (rest === 'true') {
       constants[key] = true;
       i++;
@@ -176,14 +207,16 @@ function parseConstants(raw: string): Record<string, ConstantValue> {
       i++;
       continue;
     }
-    const num = Number(rest);
-    if (!isNaN(num) && rest !== '') {
-      constants[key] = num;
-      i++;
-      continue;
+
+    if (NUMBER_RE.test(rest)) {
+      const num = Number(rest);
+      if (!Number.isNaN(num)) {
+        constants[key] = num;
+        i++;
+        continue;
+      }
     }
 
-    // Fallback: bare string
     constants[key] = rest;
     i++;
   }
@@ -193,21 +226,33 @@ function parseConstants(raw: string): Record<string, ConstantValue> {
 
 /**
  * Parse the formats section of an adaptor.md file.
- * @param raw - Raw text inside <formats> tags.
- * @returns Map of format IDs to FormatContract.
  */
 function parseFormats(raw: string): Record<string, FormatContract> {
   const formats: Record<string, FormatContract> = {};
   let match: RegExpExecArray | null;
-  FORMAT_TAG_RE.lastIndex = 0;
+  FORMAT_BLOCK_RE.lastIndex = 0;
 
-  while ((match = FORMAT_TAG_RE.exec(raw)) !== null) {
-    const id = match[1] ?? '';
+  while ((match = FORMAT_BLOCK_RE.exec(raw)) !== null) {
+    const attrsRaw = match[1] ?? '';
+    const body = (match[2] ?? '').trim();
+
+    const attrs: Record<string, string> = {};
+    let a: RegExpExecArray | null;
+    FORMAT_ATTR_RE.lastIndex = 0;
+    while ((a = FORMAT_ATTR_RE.exec(attrsRaw)) !== null) {
+      const k = a[1];
+      if (!k) continue;
+      attrs[k] = a[2] ?? '';
+    }
+
+    const id = attrs['id'];
+    if (!id) continue;
+
     formats[id] = {
       id,
-      name: match[2] ?? '',
-      purpose: match[3] ?? '',
-      body: (match[4] ?? '').trim(),
+      name: attrs['name'] ?? '',
+      purpose: attrs['purpose'] ?? '',
+      body,
     };
   }
 
@@ -216,8 +261,6 @@ function parseFormats(raw: string): Record<string, FormatContract> {
 
 /**
  * Parse an adaptor.md file into structured data.
- * @param filePath - Absolute path to the adaptor.md file.
- * @returns Parsed AdaptorData.
  */
 export async function parseAdaptorMd(filePath: string): Promise<AdaptorData> {
   const raw = await fs.readFile(filePath, 'utf8');
@@ -226,8 +269,6 @@ export async function parseAdaptorMd(filePath: string): Promise<AdaptorData> {
 
 /**
  * Parse an adaptor.md string into structured data.
- * @param raw - Raw adaptor.md content.
- * @returns Parsed AdaptorData.
  */
 export function parseAdaptorMdString(raw: string): AdaptorData {
   const data: AdaptorData = {
@@ -262,7 +303,11 @@ export function parseAdaptorMdString(raw: string): AdaptorData {
 /**
  * Extract a string constant or return a default.
  */
-export function getString(constants: Record<string, ConstantValue>, key: string, fallback = ''): string {
+export function getString(
+  constants: Record<string, ConstantValue>,
+  key: string,
+  fallback = ''
+): string {
   const v = constants[key];
   return typeof v === 'string' ? v : fallback;
 }

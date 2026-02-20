@@ -1,8 +1,11 @@
-"""Tests that every platform adapter has a valid adaptor.md."""
+"""Tests that validate platform adapter file conventions."""
 
+from __future__ import annotations
+
+import re
 from pathlib import Path
 
-from aps_cli.parsers.adaptor import get_string, parse_adaptor_md
+from aps_cli.parsers.adaptor import parse_adaptor_md
 
 PLATFORMS_DIR = (
     Path(__file__).resolve().parents[3]
@@ -11,26 +14,57 @@ PLATFORMS_DIR = (
     / "platforms"
 )
 
-
-def test_every_platform_has_adaptor_md():
-    """Every non-underscore platform directory must have an adaptor.md file."""
-    for entry in sorted(PLATFORMS_DIR.iterdir()):
-        if not entry.is_dir() or entry.name.startswith("_"):
-            continue
-        adaptor_path = entry / "adaptor.md"
-        assert adaptor_path.exists(), f"{entry.name}/ is missing adaptor.md"
+FORMAT_ID_RE = re.compile(r'<format\b[^>]*\bid="([^"]+)"')
 
 
-def test_every_adaptor_has_required_constants():
-    """Every adaptor.md must define PLATFORM_ID and DISPLAY_NAME constants."""
-    for entry in sorted(PLATFORMS_DIR.iterdir()):
-        if not entry.is_dir() or entry.name.startswith("_"):
+def _platform_dirs() -> list[Path]:
+    return [
+        p
+        for p in PLATFORMS_DIR.iterdir()
+        if p.is_dir() and not p.name.startswith("_")
+    ]
+
+
+def test_each_platform_has_adaptor_md():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        adaptor = platform / "adaptor.md"
+        assert adaptor.exists(), f"Missing adaptor.md in {platform.name}"
+
+
+def test_adaptor_has_required_constants():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        assert isinstance(data.constants.get("PLATFORM_ID"), str)
+        assert isinstance(data.constants.get("DISPLAY_NAME"), str)
+        assert isinstance(data.constants.get("ADAPTER_VERSION"), str)
+
+
+def test_adaptor_has_unique_format_ids():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        raw = (platform / "adaptor.md").read_text(encoding="utf-8")
+        ids = FORMAT_ID_RE.findall(raw)
+        assert len(ids) == len(set(ids)), f"Duplicate <format id> values in {platform.name}"
+
+
+def test_agent_versioning_is_valid_json_when_present():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        if "AGENT_VERSIONING" not in data.constants:
             continue
-        adaptor_path = entry / "adaptor.md"
-        if not adaptor_path.exists():
-            continue
-        data = parse_adaptor_md(adaptor_path)
-        pid = get_string(data.constants, "PLATFORM_ID")
-        name = get_string(data.constants, "DISPLAY_NAME")
-        assert pid, f"{entry.name}/adaptor.md is missing PLATFORM_ID constant"
-        assert name, f"{entry.name}/adaptor.md is missing DISPLAY_NAME constant"
+
+        av = data.constants["AGENT_VERSIONING"]
+        assert isinstance(av, dict), f"AGENT_VERSIONING must be an object in {platform.name}"
+        templates = av.get("templates")
+        assert isinstance(templates, list), f"AGENT_VERSIONING.templates must be a list in {platform.name}"

@@ -51,7 +51,7 @@ PLATFORMS_BASE: ".claude/skills/agnostic-prompt-standard/platforms"
 PLATFORMS_BASE_ALT: ".github/skills/agnostic-prompt-standard/platforms"
 CTA: "Reply with letter choices (e.g., '1a, 2c') or 'ok' to accept defaults."
 
-PLATFORMS: JSON
+PLATFORMS: JSON<<
 {
 "vscode-copilot": {
 "displayName": "VS Code Copilot",
@@ -70,7 +70,7 @@ PLATFORMS: JSON
 }
 >>
 
-FIELD_REQUIREMENTS_VSCODE: JSON
+FIELD_REQUIREMENTS_VSCODE: JSON<<
 {
 "required": ["name", "description"],
 "recommended": {
@@ -83,7 +83,7 @@ FIELD_REQUIREMENTS_VSCODE: JSON
 }
 >>
 
-FIELD_REQUIREMENTS_CLAUDE: JSON
+FIELD_REQUIREMENTS_CLAUDE: JSON<<
 {
 "required": ["name", "description"],
 "recommended": {
@@ -96,14 +96,14 @@ FIELD_REQUIREMENTS_CLAUDE: JSON
 }
 >>
 
-SLUG_RULES_VSCODE: TEXT
+SLUG_RULES_VSCODE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
 - collapse/trim -
 >>
 
-SLUG_RULES_CLAUDE: TEXT
+SLUG_RULES_CLAUDE: TEXT<<
 - lowercase ascii
 - space/\_ -> -
 - keep [a-z0-9-]
@@ -111,7 +111,7 @@ SLUG_RULES_CLAUDE: TEXT
 - name field must be unique identifier (lowercase, hyphens only)
 >>
 
-ASK_RULES: TEXT
+ASK_RULES: TEXT<<
 - ask only what blocks agent generation
 - 0-2 questions per turn
 - each question MUST have 4 suggested answers (a-d) plus option (e) for "all of the above" or "none/other"
@@ -128,7 +128,7 @@ ASK_RULES: TEXT
 - MUST prompt for description if not provided
 >>
 
-LINT_CHECKS: TEXT
+LINT_CHECKS: TEXT<<
 - section order: instructions, constants, formats, runtime, triggers, processes, input
 - tag newline rule
 - no tabs
@@ -153,7 +153,7 @@ LINT_CHECKS: TEXT
 - generated <constants> use YAML blocks for structured data unless JSON is the target format
 >>
 
-AGENT_SKELETON: TEXT
+AGENT_SKELETON: TEXT<<
 <instructions>\n...\n</instructions>\n<constants>\n...\n</constants>\n<formats>\n...\n</formats>\n<runtime>\n...\n</runtime>\n<triggers>\n...\n</triggers>\n<processes>\n...\n</processes>\n<input>\n...\n</input>
 >>
 

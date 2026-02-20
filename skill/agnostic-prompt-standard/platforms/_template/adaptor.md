@@ -11,7 +11,7 @@ LAST_UPDATED: "YYYY-MM-DD"
 
 INSTRUCTION_FILE_PATHS: [".github/copilot-instructions.md"]
 
-DETECTION_MARKERS: []
+DETECTION_MARKERS: [".github/agents/", "path/to/marker.file"]
 
 DOCS_HOME_URL: "https://example.com/docs"
 </constants>

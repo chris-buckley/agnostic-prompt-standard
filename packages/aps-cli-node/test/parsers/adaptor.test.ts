@@ -16,6 +16,8 @@ ADAPTER_VERSION: "2.0.0"
 LAST_UPDATED: "2026-02-19"
 ENABLED: true
 MAX_RETRIES: 3
+SCIENTIFIC: 1e3
+CONST_REFS: [PLATFORM_ID, DISPLAY_NAME]
 
 INSTRUCTION_FILE_PATHS: ["./README.md", "./docs/*.md"]
 DETECTION_MARKERS: [".test", "test.json"]
@@ -48,6 +50,10 @@ Content here.
 WHERE:
 - <TITLE> is String; the title.
 </format>
+
+<format name="Alt Format" purpose="Attr order test." id="ALT_FORMAT_V1">
+Alt content.
+</format>
 </formats>
 `;
 
@@ -74,10 +80,20 @@ test('parseAdaptorMdString parses number constants', () => {
   assert.equal(data.constants['MAX_RETRIES'], 3);
 });
 
+test('parseAdaptorMdString parses scientific numbers', () => {
+  const data = parseAdaptorMdString(SAMPLE_ADAPTOR);
+  assert.equal(data.constants['SCIENTIFIC'], 1000);
+});
+
 test('parseAdaptorMdString parses inline arrays', () => {
   const data = parseAdaptorMdString(SAMPLE_ADAPTOR);
   assert.deepEqual(data.constants['INSTRUCTION_FILE_PATHS'], ['./README.md', './docs/*.md']);
   assert.deepEqual(data.constants['DETECTION_MARKERS'], ['.test', 'test.json']);
+});
+
+test('parseAdaptorMdString parses identifier arrays', () => {
+  const data = parseAdaptorMdString(SAMPLE_ADAPTOR);
+  assert.deepEqual(data.constants['CONST_REFS'], ['PLATFORM_ID', 'DISPLAY_NAME']);
 });
 
 test('parseAdaptorMdString parses TEXT blocks', () => {
@@ -103,12 +119,29 @@ test('parseAdaptorMdString parses CSV blocks', () => {
   assert.equal(tools[1]?.['name'], 'Write');
 });
 
+test('parseAdaptorMdString handles CRLF in CSV blocks', () => {
+  const data = parseAdaptorMdString(
+    '<constants>\r\nTOOLS: CSV<<\r\nname,risk\r\nRead,low\r\n>>\r\n</constants>'
+  );
+  const tools = data.constants['TOOLS'] as Record<string, string>[];
+  assert.equal(tools[0]?.['name'], 'Read');
+  assert.equal(tools[0]?.['risk'], 'low');
+});
+
 test('parseAdaptorMdString parses formats', () => {
   const data = parseAdaptorMdString(SAMPLE_ADAPTOR);
   assert.ok(data.formats['TEST_FORMAT_V1']);
   assert.equal(data.formats['TEST_FORMAT_V1']?.name, 'Test Format');
   assert.equal(data.formats['TEST_FORMAT_V1']?.purpose, 'A test format contract.');
   assert.ok(data.formats['TEST_FORMAT_V1']?.body.includes('WHERE:'));
+});
+
+test('parseAdaptorMdString parses format attributes in any order', () => {
+  const data = parseAdaptorMdString(SAMPLE_ADAPTOR);
+  assert.ok(data.formats['ALT_FORMAT_V1']);
+  assert.equal(data.formats['ALT_FORMAT_V1']?.name, 'Alt Format');
+  assert.equal(data.formats['ALT_FORMAT_V1']?.purpose, 'Attr order test.');
+  assert.ok(data.formats['ALT_FORMAT_V1']?.body.includes('Alt content.'));
 });
 
 test('getString returns constant string value', () => {

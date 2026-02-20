@@ -1,6 +1,13 @@
 import path from 'node:path';
 
-import { isDirectory, pathExists, loadPlatforms, resolvePayloadSkillDir, type PlatformInfo } from '../core.js';
+import {
+  isDirectory,
+  pathExists,
+  loadPlatformsDetailed,
+  resolvePayloadSkillDir,
+  type PlatformInfo,
+  type PlatformLoadIssue,
+} from '../core.js';
 import { parseAdaptorMd } from '../parsers/adaptor.js';
 
 /** Known platform adapter identifiers. */
@@ -55,42 +62,50 @@ function markersFromStringArray(raw: string[]): Marker[] {
   return raw.map((m) => {
     const isDir = m.endsWith('/');
     const relPath = isDir ? m.slice(0, -1) : m;
-    return { kind: isDir ? 'dir' as const : 'file' as const, label: m, relPath };
+    return { kind: isDir ? ('dir' as const) : ('file' as const), label: m, relPath };
   });
+}
+
+export interface LoadPlatformsWithMarkersResult {
+  platforms: PlatformWithMarkers[];
+  issues: readonly PlatformLoadIssue[];
+}
+
+/**
+ * Loads platforms with their detection markers from adaptor.md files.
+ */
+export async function loadPlatformsWithMarkersDetailed(
+  skillDir?: string
+): Promise<LoadPlatformsWithMarkersResult> {
+  const dir = skillDir ?? (await resolvePayloadSkillDir());
+  const { platforms, issues } = await loadPlatformsDetailed(dir);
+  const results: PlatformWithMarkers[] = [];
+
+  for (const platform of platforms) {
+    let markers: Marker[] = [];
+
+    try {
+      const data = await parseAdaptorMd(platform.adaptorPath);
+      const rawMarkers = data.constants['DETECTION_MARKERS'];
+      if (Array.isArray(rawMarkers)) {
+        markers = markersFromStringArray(rawMarkers.filter((m): m is string => typeof m === 'string'));
+      }
+    } catch {
+      // Ignore marker parse errors.
+    }
+
+    results.push({ ...platform, detectionMarkers: markers });
+  }
+
+  return { platforms: results, issues };
 }
 
 /**
  * Loads platforms with their detection markers from adaptor.md files.
  */
 export async function loadPlatformsWithMarkers(skillDir?: string): Promise<PlatformWithMarkers[]> {
-  const dir = skillDir ?? await resolvePayloadSkillDir();
-  const platforms = await loadPlatforms(dir);
-  const results: PlatformWithMarkers[] = [];
-
-  for (const platform of platforms) {
-    const platformDir = path.join(dir, 'platforms', platform.platformId);
-    let markers: Marker[] = [];
-
-    // Try adaptor.md first
-    const adaptorPath = path.join(platformDir, 'adaptor.md');
-    if (await pathExists(adaptorPath)) {
-      try {
-        const data = await parseAdaptorMd(adaptorPath);
-        const rawMarkers = data.constants['DETECTION_MARKERS'];
-        if (Array.isArray(rawMarkers)) {
-          markers = markersFromStringArray(
-            rawMarkers.filter((m): m is string => typeof m === 'string')
-          );
-        }
-      } catch {
-        // No markers available
-      }
-    }
-
-    results.push({ ...platform, detectionMarkers: markers });
-  }
-
-  return results;
+  const { platforms } = await loadPlatformsWithMarkersDetailed(skillDir);
+  return platforms;
 }
 
 /**
@@ -100,15 +115,13 @@ export async function detectAdapters(
   workspaceRoot: string,
   platforms?: readonly PlatformWithMarkers[]
 ): Promise<Record<string, AdapterDetection>> {
-  const platformList = platforms ?? await loadPlatformsWithMarkers();
+  const platformList = platforms ?? (await loadPlatformsWithMarkers());
   const out: Record<string, AdapterDetection> = {};
 
   const detectionResults = await Promise.all(
     platformList.map(async (platform) => {
       const markerResults = await Promise.all(
-        platform.detectionMarkers.map(async (m) =>
-          (await markerExists(workspaceRoot, m)) ? m.label : null
-        )
+        platform.detectionMarkers.map(async (m) => ((await markerExists(workspaceRoot, m)) ? m.label : null))
       );
       const reasons = markerResults.filter((r): r is string => r !== null);
       return {

@@ -1,46 +1,17 @@
+// Core platform/tool detection and loading logic for APS CLI
+
 import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
+import { existsSync, type Dirent } from 'node:fs';
 
-import { safeParseSkillFrontmatter } from './schemas/index.js';
 import { parseAdaptorMd, getString } from './parsers/adaptor.js';
 
-/** The unique identifier for the APS skill. */
+export const APS_PAYLOAD_SKILL_DIR = 'skill/agnostic-prompt-standard';
 export const SKILL_ID = 'agnostic-prompt-standard' as const;
 
 /**
- * Information about a platform adapter.
- */
-export interface PlatformInfo {
-  platformId: string;
-  displayName: string;
-  adapterVersion: string | null;
-}
-
-/**
- * Returns the user's home directory path.
- */
-export function homeDir(): string {
-  return os.homedir();
-}
-
-/**
- * Expands a leading ~ in a path to the user's home directory.
- */
-export function expandHome(p: string): string {
-  if (!p) return p;
-  if (p === '~') return homeDir();
-  if (p.startsWith('~/') || p.startsWith('~\\')) {
-    return path.join(homeDir(), p.slice(2));
-  }
-  return p;
-}
-
-/**
- * Checks if a path exists (file or directory).
+ * Determine if a path exists.
  */
 export async function pathExists(p: string): Promise<boolean> {
   try {
@@ -52,19 +23,270 @@ export async function pathExists(p: string): Promise<boolean> {
 }
 
 /**
- * Checks if a path is a directory.
+ * Determine if a path is a directory.
  */
 export async function isDirectory(p: string): Promise<boolean> {
   try {
-    const st = await fs.stat(p);
-    return st.isDirectory();
+    const stat = await fs.stat(p);
+    return stat.isDirectory();
   } catch {
     return false;
   }
 }
 
 /**
- * Finds the root of a git repository by walking up from the start directory.
+ * Resolve the payload skill directory (used when running from within the monorepo).
+ */
+export async function resolvePayloadSkillDir(): Promise<string> {
+  const cwd = process.cwd();
+  const candidate = path.join(cwd, APS_PAYLOAD_SKILL_DIR);
+  if (await isDirectory(candidate)) return candidate;
+
+  const up = path.resolve(cwd, '..', '..', APS_PAYLOAD_SKILL_DIR);
+  if (await isDirectory(up)) return up;
+
+  throw new Error(`Cannot locate payload skill directory. Tried: ${candidate}, ${up}`);
+}
+
+/**
+ * Get default personal skill path for a given platform.
+ */
+export function defaultPersonalSkillPath(opts: { claude?: boolean } = {}): string {
+  if (opts.claude) return path.join(os.homedir(), '.claude', 'skills', 'agnostic-prompt-standard');
+  return path.join(os.homedir(), '.copilot', 'skills', 'agnostic-prompt-standard');
+}
+
+/**
+ * Get default project skill path for a given workspace root.
+ */
+export function defaultProjectSkillPath(workspaceRoot: string, opts: { claude?: boolean } = {}): string {
+  if (opts.claude) return path.join(workspaceRoot, '.claude', 'skills', 'agnostic-prompt-standard');
+  return path.join(workspaceRoot, '.github', 'skills', 'agnostic-prompt-standard');
+}
+
+/**
+ * Infer a platform adapter from workspace markers.
+ */
+export function inferPlatformId(workspaceRoot: string): 'vscode-copilot' | null {
+  const prompts = path.join(workspaceRoot, '.github', 'prompts');
+  if (existsSync(prompts)) return 'vscode-copilot';
+  return null;
+}
+
+/**
+ * Pick the workspace root. Uses a provided path or attempts to infer from cwd.
+ */
+export async function pickWorkspaceRoot(root?: string): Promise<string | null> {
+  if (root) return root;
+  const cwd = process.cwd();
+  if (await pathExists(path.join(cwd, 'package.json'))) return cwd;
+  return null;
+}
+
+/**
+ * Information about a platform adapter.
+ */
+export interface PlatformInfo {
+  platformId: string;
+  dirName: string;
+  adaptorPath: string;
+  displayName: string;
+  adapterVersion: string | null;
+}
+
+export type PlatformLoadIssueKind =
+  | 'missing_adaptor'
+  | 'parse_error'
+  | 'missing_required_constant'
+  | 'id_mismatch';
+
+export interface PlatformLoadIssue {
+  dirName: string;
+  kind: PlatformLoadIssueKind;
+  message: string;
+}
+
+export interface LoadPlatformsResult {
+  platforms: PlatformInfo[];
+  issues: PlatformLoadIssue[];
+}
+
+/**
+ * Loads all platform adapters from the skill's platforms directory.
+ */
+export async function loadPlatformsDetailed(skillDir: string): Promise<LoadPlatformsResult> {
+  const platformsDir = path.join(skillDir, 'platforms');
+  let entries: Dirent[];
+
+  try {
+    entries = await fs.readdir(platformsDir, { withFileTypes: true });
+  } catch {
+    return { platforms: [], issues: [] };
+  }
+
+  const platforms: PlatformInfo[] = [];
+  const issues: PlatformLoadIssue[] = [];
+
+  const platformDirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('_'));
+
+  for (const entry of platformDirs) {
+    const dirName = entry.name;
+    const platformDir = path.join(platformsDir, dirName);
+    const adaptorPath = path.join(platformDir, 'adaptor.md');
+
+    if (!(await pathExists(adaptorPath))) {
+      issues.push({ dirName, kind: 'missing_adaptor', message: 'adaptor.md is missing.' });
+      continue;
+    }
+
+    let data: Awaited<ReturnType<typeof parseAdaptorMd>>;
+    try {
+      data = await parseAdaptorMd(adaptorPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      issues.push({
+        dirName,
+        kind: 'parse_error',
+        message: `Failed to parse adaptor.md: ${msg}`,
+      });
+      continue;
+    }
+
+    const rawPlatformId = getString(data.constants, 'PLATFORM_ID', '').trim();
+    const rawDisplayName = getString(data.constants, 'DISPLAY_NAME', '').trim();
+    const adapterVersion = getString(data.constants, 'ADAPTER_VERSION', '').trim() || null;
+
+    if (rawPlatformId && rawPlatformId !== dirName) {
+      issues.push({
+        dirName,
+        kind: 'id_mismatch',
+        message: 'PLATFORM_ID does not match directory name; keep them aligned.',
+      });
+    }
+
+    if (!rawPlatformId) {
+      issues.push({
+        dirName,
+        kind: 'missing_required_constant',
+        message: 'PLATFORM_ID is missing; fallback to directory name.',
+      });
+    }
+    if (!rawDisplayName) {
+      issues.push({
+        dirName,
+        kind: 'missing_required_constant',
+        message: 'DISPLAY_NAME is missing; fallback to directory name.',
+      });
+    }
+
+    platforms.push({
+      platformId: rawPlatformId || dirName,
+      dirName,
+      adaptorPath,
+      displayName: rawDisplayName || dirName,
+      adapterVersion,
+    });
+  }
+
+  platforms.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  return { platforms, issues };
+}
+
+/**
+ * Loads all platform adapters from the skill's platforms directory.
+ */
+export async function loadPlatforms(skillDir: string): Promise<PlatformInfo[]> {
+  const { platforms } = await loadPlatformsDetailed(skillDir);
+  return platforms;
+}
+
+/**
+ * Recursively copy a directory.
+ */
+export async function copyDir(src: string, dest: string): Promise<void> {
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      await copyDir(s, d);
+    } else {
+      await fs.copyFile(s, d);
+    }
+  }
+}
+
+/**
+ * Ensure a directory exists.
+ */
+export async function ensureDir(p: string): Promise<void> {
+  await fs.mkdir(p, { recursive: true });
+}
+
+/**
+ * Read a text file if it exists.
+ */
+export async function readFileIfExists(p: string): Promise<string | null> {
+  try {
+    return await fs.readFile(p, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Write a text file if it does not exist or force is true.
+ */
+export async function writeFileIfAllowed(
+  p: string,
+  content: string,
+  opts: { force: boolean }
+): Promise<boolean> {
+  if (!opts.force && existsSync(p)) return false;
+  await ensureDir(path.dirname(p));
+  await fs.writeFile(p, content, 'utf8');
+  return true;
+}
+
+/**
+ * List files in a directory recursively.
+ */
+export async function listFilesRecursive(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...(await listFilesRecursive(full)));
+    } else {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+/**
+ * Returns the current user's home directory.
+ */
+export function homeDir(): string {
+  return os.homedir();
+}
+
+/**
+ * Expand a leading `~` to the user's home directory.
+ */
+export function expandHome(p: string): string {
+  if (!p) return p;
+  if (p === '~') return homeDir();
+  if (p.startsWith('~/') || p.startsWith('~\\')) {
+    return path.join(homeDir(), p.slice(2));
+  }
+  return p;
+}
+
+/**
+ * Walk up from `startDir` to find the nearest directory containing `.git`.
  */
 export async function findRepoRoot(startDir: string): Promise<string | null> {
   let cur = path.resolve(startDir);
@@ -78,174 +300,10 @@ export async function findRepoRoot(startDir: string): Promise<string | null> {
 }
 
 /**
- * Resolves the workspace root directory from a CLI option or auto-detects it.
- */
-export async function pickWorkspaceRoot(cliRoot: string | undefined): Promise<string | null> {
-  if (cliRoot) return path.resolve(expandHome(cliRoot));
-  return findRepoRoot(process.cwd());
-}
-
-/**
- * Returns the default project skill installation path.
- */
-export function defaultProjectSkillPath(repoRoot: string, opts: { claude?: boolean } = {}): string {
-  const claude = Boolean(opts.claude);
-  return claude
-    ? path.join(repoRoot, '.claude', 'skills', SKILL_ID)
-    : path.join(repoRoot, '.github', 'skills', SKILL_ID);
-}
-
-/**
- * Returns the default personal skill installation path.
- */
-export function defaultPersonalSkillPath(opts: { claude?: boolean } = {}): string {
-  const claude = Boolean(opts.claude);
-  return claude
-    ? path.join(homeDir(), '.claude', 'skills', SKILL_ID)
-    : path.join(homeDir(), '.copilot', 'skills', SKILL_ID);
-}
-
-/**
- * Infers the platform ID based on workspace directory structure.
- * @deprecated Use detectAdapters from detection/adapters.ts instead.
- */
-export function inferPlatformId(workspaceRoot: string): 'vscode-copilot' | null {
-  const gh = path.join(workspaceRoot, '.github');
-  const hasAgents = existsSync(path.join(gh, 'agents'));
-  const hasPrompts = existsSync(path.join(gh, 'prompts'));
-  const hasInstructions =
-    existsSync(path.join(gh, 'copilot-instructions.md')) || existsSync(path.join(gh, 'instructions'));
-  if (hasAgents || hasPrompts || hasInstructions) return 'vscode-copilot';
-  return null;
-}
-
-/** Skill frontmatter parsed from SKILL.md YAML header. */
-export type SkillFrontmatter = Record<string, string>;
-
-/**
- * Reads and parses the frontmatter from a SKILL.md file.
- */
-export async function readSkillFrontmatter(skillDir: string): Promise<SkillFrontmatter | null> {
-  const skillPath = path.join(skillDir, 'SKILL.md');
-  const raw = await fs.readFile(skillPath, 'utf8');
-  const match = raw.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return null;
-  const yaml = match[1] ?? '';
-  const out: Record<string, string> = {};
-
-  for (const line of yaml.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-    const idx = trimmed.indexOf(':');
-    if (idx === -1) continue;
-    const key = trimmed.slice(0, idx).trim();
-    let val = trimmed.slice(idx + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1);
-    }
-    out[key] = val;
-  }
-
-  const result = safeParseSkillFrontmatter(out);
-  if (!result.success) {
-    console.warn(`Warning: Invalid skill frontmatter in ${skillPath}: ${result.error.message}`);
-  }
-
-  return out;
-}
-
-/**
- * Loads a platform from its adaptor.md file.
- * @param platformDir - Absolute path to the platform directory.
- * @param dirName - Directory name (used as fallback platformId).
- * @returns PlatformInfo or null if adaptor.md is missing/invalid.
- */
-async function loadPlatformFromAdaptor(platformDir: string, dirName: string): Promise<PlatformInfo | null> {
-  const adaptorPath = path.join(platformDir, 'adaptor.md');
-  if (!(await pathExists(adaptorPath))) return null;
-
-  try {
-    const data = await parseAdaptorMd(adaptorPath);
-    return {
-      platformId: getString(data.constants, 'PLATFORM_ID', dirName),
-      displayName: getString(data.constants, 'DISPLAY_NAME', dirName),
-      adapterVersion: getString(data.constants, 'ADAPTER_VERSION') || null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Loads all platform adapters from the skill's platforms directory.
- * @param skillDir - The skill directory containing a platforms/ subdirectory.
- * @returns An array of platform information, sorted by display name.
- */
-export async function loadPlatforms(skillDir: string): Promise<PlatformInfo[]> {
-  const platformsDir = path.join(skillDir, 'platforms');
-  const entries = await fs.readdir(platformsDir, { withFileTypes: true });
-  const platformDirs = entries.filter((e) => e.isDirectory() && !e.name.startsWith('_'));
-
-  const loadResults = await Promise.allSettled(
-    platformDirs.map(async (e) => {
-      const fullPath = path.join(platformsDir, e.name);
-      return loadPlatformFromAdaptor(fullPath, e.name);
-    })
-  );
-
-  const platforms: PlatformInfo[] = [];
-  for (const result of loadResults) {
-    if (result.status === 'fulfilled' && result.value !== null) {
-      platforms.push(result.value);
-    }
-  }
-
-  platforms.sort((a, b) => a.displayName.localeCompare(b.displayName));
-  return platforms;
-}
-
-/**
- * Resolves the directory containing the current module.
- */
-export function resolveThisDir(): string {
-  return path.dirname(fileURLToPath(import.meta.url));
-}
-
-/**
- * Resolves the path to the APS skill payload directory.
- */
-export async function resolvePayloadSkillDir(): Promise<string> {
-  const thisDir = resolveThisDir();
-  const packaged = path.resolve(thisDir, '..', 'payload', SKILL_ID);
-  if (await isDirectory(packaged)) return packaged;
-  const dev = path.resolve(thisDir, '..', '..', '..', 'skill', SKILL_ID);
-  if (await isDirectory(dev)) return dev;
-  throw new Error('APS payload not found (payload directory missing).');
-}
-
-/**
- * Ensures a directory exists, creating it recursively if needed.
- */
-export async function ensureDir(p: string): Promise<void> {
-  await fs.mkdir(p, { recursive: true });
-}
-
-/**
- * Removes a directory recursively.
+ * Remove a directory recursively.
  */
 export async function removeDir(p: string): Promise<void> {
   await fs.rm(p, { recursive: true, force: true });
-}
-
-/**
- * Copies a directory recursively.
- */
-export async function copyDir(src: string, dst: string): Promise<void> {
-  await fs.cp(src, dst, {
-    recursive: true,
-    force: true,
-    preserveTimestamps: true,
-  });
 }
 
 function toPosixPath(p: string): string {
@@ -253,29 +311,7 @@ function toPosixPath(p: string): string {
 }
 
 /**
- * Recursively lists all files in a directory.
- */
-export async function listFilesRecursive(rootDir: string): Promise<string[]> {
-  const results: string[] = [];
-
-  async function walk(dir: string): Promise<void> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        await walk(fullPath);
-      } else {
-        results.push(fullPath);
-      }
-    }
-  }
-
-  await walk(rootDir);
-  return results;
-}
-
-/**
- * Options for copying template files.
+ * Options for copying template files from a source directory into a destination root.
  */
 export interface CopyTemplateTreeOptions {
   force?: boolean;
@@ -283,7 +319,8 @@ export interface CopyTemplateTreeOptions {
 }
 
 /**
- * Copies template files from a source directory to a destination root.
+ * Copy template files from `srcDir` into `dstRoot`, preserving relative paths.
+ * Returns the list of relative paths that were actually written.
  */
 export async function copyTemplateTree(
   srcDir: string,
