@@ -96,45 +96,29 @@ skill/
         format-markdown-table-v1.0.0.example.md           Process results table format
         format-smeac-plan-v1.0.0.example.md               SMEAC-style plan format
         format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
+      composites/
+        gui-component-spec-v1.0.0.example.md    GUI component vocabulary and format contract
     platforms/
       claude-code/
-        frontmatter/
-          agent-frontmatter.md                YAML template for agent files
-          rules-frontmatter.md                YAML template for rules files
+        adaptor.md                            Platform adapter (single source of truth)
         templates/
           .claude/
             agents/
               aps-v{VERSION}.md               APS agent protocol template (versioned)
-        manifest.json                         Claude Code file discovery rules
-        README.md                             Adapter quickstart and usage guide
-        tools-registry.json                   Tool names, sets, and mappings
       opencode/
-        manifest.json                         OpenCode file discovery rules
-        tools-registry.json                   Tool registry stub (placeholder)
+        adaptor.md                            Platform adapter (single source of truth)
       vscode-copilot/
-        frontmatter/
-          agent-frontmatter.md                YAML template for agent files
-          instructions-frontmatter.md         YAML template for instructions files
-          prompt-frontmatter.md               YAML template for prompt files
-          skill-frontmatter.md                YAML template for skill files
+        adaptor.md                            Platform adapter (single source of truth)
         templates/
           .github/
             agents/
               aps-v{VERSION}.agent.md         APS prompt protocol agent template (versioned)
-        manifest.json                         VS Code file discovery rules
-        README.md                             Adapter quickstart and usage guide
-        tools-registry.json                   Tool names, sets, and mappings
-      _schemas/
-        platform-manifest.schema.json         JSON Schema for manifest validation
-        tools-registry.schema.json            JSON Schema for tools registry
       _template/
+        adaptor.md                            Starter adapter for new platforms
         templates/
           .github/
             agents/
               .gitkeep                        Placeholder for agent templates
-        manifest.json                         Starter manifest for new adapters
-        README.md                             Instructions to create new adapters
-        tools-registry.json                   Empty tools registry template
       README.md                               Platforms overview and adapter contract
     references/
       00-structure.md                         Prompt sections and envelope rules
@@ -152,7 +136,7 @@ skill/
 
 SKILL_FOLDERS_DESC: TEXT<<
 The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
-The `assets/` folder contains reusable templates and example components organized into `constants/` and `formats/` subfolders that can be used when building APS-compliant prompts.
+The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `composites/` subfolders that can be used when building APS-compliant prompts. Composites bundle tightly coupled `<constants>` and `<formats>` in a single file where the format contract references the constants as its type vocabulary.
 The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
 The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability) without changing the core APS spec. The `claude-code/` adapter (used with `--platform claude-code`) is particularly important for Claude Code CLI users, alongside `opencode/` and `vscode-copilot/` adapters plus templates for creating new adapters.
 >>

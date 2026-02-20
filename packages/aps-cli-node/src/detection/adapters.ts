@@ -1,8 +1,14 @@
 import path from 'node:path';
-import fs from 'node:fs/promises';
 
-import { isDirectory, pathExists, loadPlatforms, resolvePayloadSkillDir, type PlatformInfo } from '../core.js';
-import { safeParsePlatformManifest, normalizeDetectionMarker, type DetectionMarker } from '../schemas/index.js';
+import {
+  isDirectory,
+  pathExists,
+  loadPlatformsDetailed,
+  resolvePayloadSkillDir,
+  type PlatformInfo,
+  type PlatformLoadIssue,
+} from '../core.js';
+import { parseAdaptorMd } from '../parsers/adaptor.js';
 
 /** Known platform adapter identifiers. */
 export type KnownAdapterId = 'vscode-copilot' | 'claude-code' | 'opencode';
@@ -11,11 +17,8 @@ export type KnownAdapterId = 'vscode-copilot' | 'claude-code' | 'opencode';
  * Result of detecting a platform adapter in a workspace.
  */
 export interface AdapterDetection {
-  /** The platform adapter identifier. */
   platformId: string;
-  /** Whether the adapter was detected. */
   detected: boolean;
-  /** Human-readable reasons (e.g. '.github/copilot-instructions.md'). */
   reasons: readonly string[];
 }
 
@@ -23,11 +26,8 @@ export interface AdapterDetection {
  * A marker file or directory used to detect a platform adapter.
  */
 export interface Marker {
-  /** The type of marker (file or directory). */
   kind: 'file' | 'dir';
-  /** Display label for UI. */
   label: string;
-  /** Path relative to workspace root. */
   relPath: string;
 }
 
@@ -40,9 +40,6 @@ export const DEFAULT_ADAPTER_ORDER: readonly KnownAdapterId[] = [
 
 /**
  * Checks if a marker file or directory exists.
- * @param workspaceRoot - The workspace root directory.
- * @param marker - The marker to check.
- * @returns True if the marker exists.
  */
 async function markerExists(workspaceRoot: string, marker: Marker): Promise<boolean> {
   const full = path.join(workspaceRoot, marker.relPath);
@@ -58,72 +55,73 @@ export interface PlatformWithMarkers extends PlatformInfo {
 }
 
 /**
- * Loads platforms with their detection markers from manifest files.
- * @param skillDir - The skill directory containing platforms.
- * @returns Array of platforms with detection markers.
+ * Convert a detection marker string array from adaptor.md into Marker objects.
+ * Each string is treated as a file marker unless it ends with / (dir).
  */
-export async function loadPlatformsWithMarkers(skillDir?: string): Promise<PlatformWithMarkers[]> {
-  const dir = skillDir ?? await resolvePayloadSkillDir();
-  const platforms = await loadPlatforms(dir);
+function markersFromStringArray(raw: string[]): Marker[] {
+  return raw.map((m) => {
+    const isDir = m.endsWith('/');
+    const relPath = isDir ? m.slice(0, -1) : m;
+    return { kind: isDir ? ('dir' as const) : ('file' as const), label: m, relPath };
+  });
+}
+
+export interface LoadPlatformsWithMarkersResult {
+  platforms: PlatformWithMarkers[];
+  issues: readonly PlatformLoadIssue[];
+}
+
+/**
+ * Loads platforms with their detection markers from adaptor.md files.
+ */
+export async function loadPlatformsWithMarkersDetailed(
+  skillDir?: string
+): Promise<LoadPlatformsWithMarkersResult> {
+  const dir = skillDir ?? (await resolvePayloadSkillDir());
+  const { platforms, issues } = await loadPlatformsDetailed(dir);
   const results: PlatformWithMarkers[] = [];
 
   for (const platform of platforms) {
-    const manifestPath = path.join(dir, 'platforms', platform.platformId, 'manifest.json');
     let markers: Marker[] = [];
 
     try {
-      const raw = await fs.readFile(manifestPath, 'utf8');
-      const parsed: unknown = JSON.parse(raw);
-
-      // Validate with Zod schema
-      const result = safeParsePlatformManifest(parsed);
-      if (result.success && result.data.detectionMarkers) {
-        // Normalize markers (handle both string and object formats)
-        markers = result.data.detectionMarkers.map((m) => {
-          const normalized: DetectionMarker = normalizeDetectionMarker(m);
-          return {
-            kind: normalized.kind,
-            label: normalized.label,
-            relPath: normalized.relPath,
-          };
-        });
-      } else if (!result.success) {
-        console.warn(`Warning: Invalid platform manifest at ${manifestPath}: ${JSON.stringify(result.error.errors, null, 2)}`);
+      const data = await parseAdaptorMd(platform.adaptorPath);
+      const rawMarkers = data.constants['DETECTION_MARKERS'];
+      if (Array.isArray(rawMarkers)) {
+        markers = markersFromStringArray(rawMarkers.filter((m): m is string => typeof m === 'string'));
       }
     } catch {
-      // No manifest or invalid JSON - continue with empty markers
+      // Ignore marker parse errors.
     }
 
-    results.push({
-      ...platform,
-      detectionMarkers: markers,
-    });
+    results.push({ ...platform, detectionMarkers: markers });
   }
 
-  return results;
+  return { platforms: results, issues };
+}
+
+/**
+ * Loads platforms with their detection markers from adaptor.md files.
+ */
+export async function loadPlatformsWithMarkers(skillDir?: string): Promise<PlatformWithMarkers[]> {
+  const { platforms } = await loadPlatformsWithMarkersDetailed(skillDir);
+  return platforms;
 }
 
 /**
  * Detects which platform adapters are present in a workspace.
- * Reads detection markers from platform manifests.
- * @param workspaceRoot - The workspace root directory.
- * @param platforms - Optional pre-loaded platforms with markers.
- * @returns A record mapping adapter IDs to their detection results.
  */
 export async function detectAdapters(
   workspaceRoot: string,
   platforms?: readonly PlatformWithMarkers[]
 ): Promise<Record<string, AdapterDetection>> {
-  const platformList = platforms ?? await loadPlatformsWithMarkers();
+  const platformList = platforms ?? (await loadPlatformsWithMarkers());
   const out: Record<string, AdapterDetection> = {};
 
-  // Check all adapters in parallel
   const detectionResults = await Promise.all(
     platformList.map(async (platform) => {
       const markerResults = await Promise.all(
-        platform.detectionMarkers.map(async (m) =>
-          (await markerExists(workspaceRoot, m)) ? m.label : null
-        )
+        platform.detectionMarkers.map(async (m) => ((await markerExists(workspaceRoot, m)) ? m.label : null))
       );
       const reasons = markerResults.filter((r): r is string => r !== null);
       return {
@@ -146,8 +144,6 @@ export async function detectAdapters(
 
 /**
  * Formats a detection result as a label suffix.
- * @param d - The adapter detection result.
- * @returns A label suffix like ' (detected)' or empty string.
  */
 export function formatDetectionLabel(d: AdapterDetection): string {
   if (!d.detected) return '';
@@ -156,8 +152,6 @@ export function formatDetectionLabel(d: AdapterDetection): string {
 
 /**
  * Sorts platforms for UI display: known adapters first in defined order, then others alphabetically.
- * @param platforms - Array of platform info objects.
- * @returns Sorted array of platforms.
  */
 export function sortPlatformsForUi<T extends { platformId: string; displayName: string }>(
   platforms: readonly T[]

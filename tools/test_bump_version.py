@@ -12,10 +12,11 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
 from bump_version import (
+    _parse_adaptor_json_block,
     build_authors_suffix,
     expand_version_pattern,
     find_existing_agent_file,
-    load_platform_manifests,
+    load_platform_versioning_configs,
     read_skill_metadata,
     rename_agent_file,
     update_agent_frontmatter,
@@ -48,8 +49,8 @@ class TestExpandVersionPattern(unittest.TestCase):
         self.assertEqual(result, "static-text")
 
 
-class TestLoadPlatformManifests(unittest.TestCase):
-    """Tests for load_platform_manifests function."""
+class TestLoadPlatformVersioningConfigs(unittest.TestCase):
+    """Tests for load_platform_versioning_configs function."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -59,38 +60,37 @@ class TestLoadPlatformManifests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_returns_empty_for_nonexistent_dir(self):
-        result = load_platform_manifests(Path("/nonexistent"))
+        result = load_platform_versioning_configs(Path("/nonexistent"))
         self.assertEqual(result, [])
 
     def test_skips_directories_starting_with_underscore(self):
         underscore_dir = self.platforms_dir / "_template"
         underscore_dir.mkdir()
-        manifest = underscore_dir / "manifest.json"
-        manifest.write_text(json.dumps({"agentVersioning": {}}))
-        
-        result = load_platform_manifests(self.platforms_dir)
+        adaptor_content = '<instructions></instructions>\n<constants>\nPLATFORM_ID: "_template"\nDISPLAY_NAME: "Template"\n\nAGENT_VERSIONING: JSON<<\n{\n  "templates": []\n}\n>>\n</constants>\n<formats></formats>'
+        (underscore_dir / "adaptor.md").write_text(adaptor_content)
+
+        result = load_platform_versioning_configs(self.platforms_dir)
         self.assertEqual(result, [])
 
-    def test_skips_manifests_without_agentVersioning(self):
+    def test_skips_adaptors_without_agent_versioning(self):
         platform_dir = self.platforms_dir / "test-platform"
         platform_dir.mkdir()
-        manifest = platform_dir / "manifest.json"
-        manifest.write_text(json.dumps({"platformId": "test"}))
-        
-        result = load_platform_manifests(self.platforms_dir)
+        adaptor_content = '<instructions></instructions>\n<constants>\nPLATFORM_ID: "test"\nDISPLAY_NAME: "Test"\n</constants>\n<formats></formats>'
+        (platform_dir / "adaptor.md").write_text(adaptor_content)
+
+        result = load_platform_versioning_configs(self.platforms_dir)
         self.assertEqual(result, [])
 
-    def test_loads_manifest_with_agentVersioning(self):
+    def test_loads_adaptor_with_agent_versioning(self):
         platform_dir = self.platforms_dir / "test-platform"
         platform_dir.mkdir()
-        manifest_data = {"platformId": "test", "agentVersioning": {"templates": []}}
-        manifest = platform_dir / "manifest.json"
-        manifest.write_text(json.dumps(manifest_data))
-        
-        result = load_platform_manifests(self.platforms_dir)
+        adaptor_content = '<instructions></instructions>\n<constants>\nPLATFORM_ID: "test-platform"\nDISPLAY_NAME: "Test Platform"\n\nAGENT_VERSIONING: JSON<<\n{\n  "templates": []\n}\n>>\n</constants>\n<formats></formats>'
+        (platform_dir / "adaptor.md").write_text(adaptor_content)
+
+        result = load_platform_versioning_configs(self.platforms_dir)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0][0], "test-platform")
-        self.assertEqual(result[0][2]["platformId"], "test")
+        self.assertEqual(result[0][2]["templates"], [])
 
 
 class TestFindExistingAgentFile(unittest.TestCase):
@@ -108,7 +108,7 @@ class TestFindExistingAgentFile(unittest.TestCase):
         templates_dir.mkdir(parents=True)
         agent_file = templates_dir / "agent.md"
         agent_file.write_text("content")
-        
+
         config = {"currentPath": "templates/agents/agent.md"}
         result = find_existing_agent_file(self.platform_dir, config)
         self.assertEqual(result, agent_file)
@@ -118,7 +118,7 @@ class TestFindExistingAgentFile(unittest.TestCase):
         templates_dir.mkdir(parents=True)
         versioned_file = templates_dir / "agent-v1.0.0.md"
         versioned_file.write_text("content")
-        
+
         config = {
             "currentPath": "templates/agents/agent.md",
             "path": "templates/agents/agent-v{major}.{minor}.{patch}.md"
@@ -236,10 +236,10 @@ class TestUpdateAgentFrontmatter(unittest.TestCase):
     def test_updates_quoted_name_field(self):
         agent_file = self.temp_path / "agent.md"
         agent_file.write_text('---\nname: "Old Name"\ndescription: "Old desc"\n---\nContent')
-        
+
         config = {"name": {"pattern": "New v{major}.{minor}.{patch} Name"}}
         result = update_agent_frontmatter(agent_file, config, "1", "2", "3")
-        
+
         self.assertTrue(result)
         content = agent_file.read_text()
         self.assertIn('name: "New v1.2.3 Name"', content)
@@ -247,10 +247,10 @@ class TestUpdateAgentFrontmatter(unittest.TestCase):
     def test_updates_unquoted_name_field(self):
         agent_file = self.temp_path / "agent.md"
         agent_file.write_text('---\nname: old-name\ndescription: "Old desc"\n---\nContent')
-        
+
         config = {"name": {"pattern": "new-name-v{major}-{minor}-{patch}"}}
         result = update_agent_frontmatter(agent_file, config, "1", "1", "7")
-        
+
         self.assertTrue(result)
         content = agent_file.read_text()
         self.assertIn('name: new-name-v1-1-7', content)
@@ -258,13 +258,13 @@ class TestUpdateAgentFrontmatter(unittest.TestCase):
     def test_updates_multiple_fields(self):
         agent_file = self.temp_path / "agent.md"
         agent_file.write_text('---\nname: "Old"\ndescription: "Old desc"\n---\nContent')
-        
+
         config = {
             "name": {"pattern": "APS v{major}.{minor}.{patch}"},
             "description": {"pattern": "Generate APS v{major}.{minor}.{patch} files"}
         }
         result = update_agent_frontmatter(agent_file, config, "2", "0", "0")
-        
+
         self.assertTrue(result)
         content = agent_file.read_text()
         self.assertIn('name: "APS v2.0.0"', content)
@@ -278,10 +278,10 @@ class TestUpdateAgentFrontmatter(unittest.TestCase):
     def test_returns_false_when_no_changes_needed(self):
         agent_file = self.temp_path / "agent.md"
         agent_file.write_text('---\nname: "APS v1.0.0"\n---\nContent')
-        
+
         config = {"name": {"pattern": "APS v{major}.{minor}.{patch}"}}
         result = update_agent_frontmatter(agent_file, config, "1", "0", "0")
-        
+
         # Should return False since content didn't change
         self.assertFalse(result)
 
@@ -356,10 +356,10 @@ class TestRenameAgentFile(unittest.TestCase):
         templates_dir.mkdir()
         source = templates_dir / "agent.md"
         source.write_text("content")
-        
+
         config = {"path": "templates/agent-v{major}.{minor}.{patch}.md"}
         result = rename_agent_file(self.platform_dir, config, source, "1", "1", "7")
-        
+
         expected = templates_dir / "agent-v1.1.7.md"
         self.assertEqual(result, expected)
         self.assertTrue(expected.exists())
@@ -370,10 +370,10 @@ class TestRenameAgentFile(unittest.TestCase):
         source_dir.mkdir()
         source = source_dir / "agent.md"
         source.write_text("content")
-        
+
         config = {"path": "new/nested/agent-v{major}.{minor}.{patch}.md"}
         result = rename_agent_file(self.platform_dir, config, source, "2", "0", "0")
-        
+
         expected = self.platform_dir / "new" / "nested" / "agent-v2.0.0.md"
         self.assertEqual(result, expected)
         self.assertTrue(expected.exists())
@@ -383,17 +383,17 @@ class TestRenameAgentFile(unittest.TestCase):
         templates_dir.mkdir()
         source = templates_dir / "agent-v1.0.0.md"
         source.write_text("content")
-        
+
         config = {"path": "templates/agent-v{major}.{minor}.{patch}.md"}
         result = rename_agent_file(self.platform_dir, config, source, "1", "0", "0")
-        
+
         self.assertEqual(result, source)
         self.assertTrue(source.exists())
 
     def test_returns_none_when_no_path_config(self):
         source = self.platform_dir / "agent.md"
         source.write_text("content")
-        
+
         result = rename_agent_file(self.platform_dir, {}, source, "1", "0", "0")
         self.assertIsNone(result)
 
@@ -408,34 +408,44 @@ class TestUpdatePlatformAgents(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    def _make_adaptor_md(self, platform_dir, templates_json):
+        """Helper to create an adaptor.md file with AGENT_VERSIONING block."""
+        adaptor_content = (
+            "<instructions></instructions>\n"
+            "<constants>\n"
+            'PLATFORM_ID: "' + platform_dir.name + '"\n'
+            'DISPLAY_NAME: "' + platform_dir.name + '"\n'
+            "\n"
+            "AGENT_VERSIONING: JSON<<\n"
+            + json.dumps({"templates": templates_json}, indent=2) + "\n"
+            ">>\n"
+            "</constants>\n"
+            "<formats></formats>"
+        )
+        (platform_dir / "adaptor.md").write_text(adaptor_content)
+
     def test_updates_vscode_style_agent(self):
         # Create VS Code style platform
         platform_dir = self.platforms_dir / "vscode-copilot"
         templates_dir = platform_dir / "templates" / ".github" / "agents"
         templates_dir.mkdir(parents=True)
-        
+
         agent_file = templates_dir / "aps-prompt-protocol.agent.md"
         agent_file.write_text(
             '---\nname: "APS v1.0.0 Agent"\ndescription: "Generate APS v1.0.0 files"\n---\nContent'
         )
-        
-        manifest = {
-            "platformId": "vscode-copilot",
-            "agentVersioning": {
-                "templates": [{
-                    "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-                    "currentPath": "templates/.github/agents/aps-prompt-protocol.agent.md",
-                    "frontmatter": {
-                        "name": {"pattern": "APS v{major}.{minor}.{patch} Agent"},
-                        "description": {"pattern": "Generate APS v{major}.{minor}.{patch} files"}
-                    }
-                }]
+
+        self._make_adaptor_md(platform_dir, [{
+            "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
+            "current_path": "templates/.github/agents/aps-prompt-protocol.agent.md",
+            "frontmatter": {
+                "name_pattern": "APS v{major}.{minor}.{patch} Agent",
+                "description_pattern": "Generate APS v{major}.{minor}.{patch} files"
             }
-        }
-        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
-        
+        }])
+
         result = update_platform_agents(self.platforms_dir, "1.1.7")
-        
+
         self.assertEqual(len(result), 1)
         new_file = templates_dir / "aps-v1.1.7.agent.md"
         self.assertTrue(new_file.exists())
@@ -448,29 +458,23 @@ class TestUpdatePlatformAgents(unittest.TestCase):
         platform_dir = self.platforms_dir / "claude-code"
         templates_dir = platform_dir / "templates" / ".claude" / "agents"
         templates_dir.mkdir(parents=True)
-        
+
         agent_file = templates_dir / "aps-agent-protocol.md"
         agent_file.write_text(
             '---\nname: aps-agent-protocol\ndescription: "Generate APS v1.0.0 files"\n---\nContent'
         )
-        
-        manifest = {
-            "platformId": "claude-code",
-            "agentVersioning": {
-                "templates": [{
-                    "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-                    "currentPath": "templates/.claude/agents/aps-agent-protocol.md",
-                    "frontmatter": {
-                        "name": {"pattern": "aps-v{major}-{minor}-{patch}"},
-                        "description": {"pattern": "Generate APS v{major}.{minor}.{patch} files"}
-                    }
-                }]
+
+        self._make_adaptor_md(platform_dir, [{
+            "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
+            "current_path": "templates/.claude/agents/aps-agent-protocol.md",
+            "frontmatter": {
+                "name_pattern": "aps-v{major}-{minor}-{patch}",
+                "description_pattern": "Generate APS v{major}.{minor}.{patch} files"
             }
-        }
-        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
-        
+        }])
+
         result = update_platform_agents(self.platforms_dir, "1.1.7")
-        
+
         self.assertEqual(len(result), 1)
         new_file = templates_dir / "aps-v1.1.7.md"
         self.assertTrue(new_file.exists())
@@ -485,58 +489,46 @@ class TestUpdatePlatformAgents(unittest.TestCase):
         platform_dir = self.platforms_dir / "test-platform"
         templates_dir = platform_dir / "templates"
         templates_dir.mkdir(parents=True)
-        
+
         # File already versioned from previous bump
         agent_file = templates_dir / "agent-v1.0.0.md"
         agent_file.write_text('---\nname: "v1.0.0"\n---\nContent')
-        
-        manifest = {
-            "platformId": "test",
-            "agentVersioning": {
-                "templates": [{
-                    "path": "templates/agent-v{major}.{minor}.{patch}.md",
-                    "currentPath": "templates/agent.md",
-                    "frontmatter": {"name": {"pattern": "v{major}.{minor}.{patch}"}}
-                }]
-            }
-        }
-        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
-        
+
+        self._make_adaptor_md(platform_dir, [{
+            "path": "templates/agent-v{major}.{minor}.{patch}.md",
+            "current_path": "templates/agent.md",
+            "frontmatter": {"name_pattern": "v{major}.{minor}.{patch}"}
+        }])
+
         result = update_platform_agents(self.platforms_dir, "2.0.0")
-        
+
         new_file = templates_dir / "agent-v2.0.0.md"
         self.assertTrue(new_file.exists())
         self.assertFalse(agent_file.exists())  # Old file should be gone
 
-    def test_updates_manifest_currentPath_after_rename(self):
-        """Verify currentPath in manifest.json is updated after file rename."""
+    def test_updates_adaptor_current_path_after_rename(self):
+        """Verify current_path in adaptor.md is updated after file rename."""
         platform_dir = self.platforms_dir / "test-platform"
         templates_dir = platform_dir / "templates"
         templates_dir.mkdir(parents=True)
 
-        # Stale currentPath pointing to old version
+        # Stale current_path pointing to old version
         agent_file = templates_dir / "agent-v1.0.0.md"
         agent_file.write_text('---\nname: "v1.0.0"\n---\nContent')
 
-        manifest = {
-            "platformId": "test",
-            "agentVersioning": {
-                "templates": [{
-                    "path": "templates/agent-v{major}.{minor}.{patch}.md",
-                    "currentPath": "templates/agent-v0.9.0.md",
-                    "frontmatter": {"name": {"pattern": "v{major}.{minor}.{patch}"}}
-                }]
-            }
-        }
-        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
+        self._make_adaptor_md(platform_dir, [{
+            "path": "templates/agent-v{major}.{minor}.{patch}.md",
+            "current_path": "templates/agent-v0.9.0.md",
+            "frontmatter": {"name_pattern": "v{major}.{minor}.{patch}"}
+        }])
 
         update_platform_agents(self.platforms_dir, "2.0.0")
 
-        # Verify manifest was rewritten with updated currentPath
-        updated_manifest = json.loads(
-            (platform_dir / "manifest.json").read_text(encoding="utf-8")
-        )
-        current_path = updated_manifest["agentVersioning"]["templates"][0]["currentPath"]
+        # Verify adaptor.md was rewritten with updated current_path
+        adaptor_text = (platform_dir / "adaptor.md").read_text(encoding="utf-8")
+        versioning = _parse_adaptor_json_block(adaptor_text, "AGENT_VERSIONING")
+        self.assertIsNotNone(versioning)
+        current_path = versioning["templates"][0]["current_path"]
         self.assertEqual(current_path, "templates/agent-v2.0.0.md")
 
     def test_appends_authors_suffix_to_description(self):
@@ -553,20 +545,14 @@ class TestUpdatePlatformAgents(unittest.TestCase):
             '---\nContent'
         )
 
-        manifest = {
-            "platformId": "test",
-            "agentVersioning": {
-                "templates": [{
-                    "path": "templates/agent-v{major}.{minor}.{patch}.md",
-                    "currentPath": "templates/agent.md",
-                    "frontmatter": {
-                        "name": {"pattern": "v{major}.{minor}.{patch}"},
-                        "description": {"pattern": "Generate v{major}.{minor}.{patch} files."},
-                    }
-                }]
+        self._make_adaptor_md(platform_dir, [{
+            "path": "templates/agent-v{major}.{minor}.{patch}.md",
+            "current_path": "templates/agent.md",
+            "frontmatter": {
+                "name_pattern": "v{major}.{minor}.{patch}",
+                "description_pattern": "Generate v{major}.{minor}.{patch} files."
             }
-        }
-        (platform_dir / "manifest.json").write_text(json.dumps(manifest))
+        }])
 
         suffix = "Author: Alice. URL: https://example.com"
         result = update_platform_agents(self.platforms_dir, "2.0.0", authors_suffix=suffix)

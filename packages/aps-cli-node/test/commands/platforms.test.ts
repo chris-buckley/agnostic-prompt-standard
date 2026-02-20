@@ -33,15 +33,15 @@ test('loadPlatforms skips directories starting with underscore', async () => {
   const templateDir = path.join(platformsDir, '_template');
   await fs.mkdir(templateDir);
   await fs.writeFile(
-    path.join(templateDir, 'manifest.json'),
-    JSON.stringify({ platformId: '_template', displayName: 'Template' })
+    path.join(templateDir, 'adaptor.md'),
+    '<instructions></instructions>\n<constants>\nPLATFORM_ID: "_template"\nDISPLAY_NAME: "Template"\n</constants>\n<formats></formats>'
   );
 
   const platforms = await loadPlatforms(skillDir);
   assert.deepEqual(platforms, []);
 });
 
-test('loadPlatforms loads valid platform manifests', async () => {
+test('loadPlatforms loads valid platform adaptor files', async () => {
   const root = await tempDir();
   const skillDir = path.join(root, 'skill');
   const platformsDir = path.join(skillDir, 'platforms');
@@ -50,12 +50,8 @@ test('loadPlatforms loads valid platform manifests', async () => {
   const testPlatformDir = path.join(platformsDir, 'test-platform');
   await fs.mkdir(testPlatformDir, { recursive: true });
   await fs.writeFile(
-    path.join(testPlatformDir, 'manifest.json'),
-    JSON.stringify({
-      platformId: 'test-platform',
-      displayName: 'Test Platform',
-      adapterVersion: '1.0.0',
-    })
+    path.join(testPlatformDir, 'adaptor.md'),
+    '<instructions></instructions>\n<constants>\nPLATFORM_ID: "test-platform"\nDISPLAY_NAME: "Test Platform"\nADAPTER_VERSION: "1.0.0"\n</constants>\n<formats></formats>'
   );
 
   const platforms = await loadPlatforms(skillDir);
@@ -65,7 +61,7 @@ test('loadPlatforms loads valid platform manifests', async () => {
   assert.equal(platforms[0]?.adapterVersion, '1.0.0');
 });
 
-test('loadPlatforms skips directories without manifest.json', async () => {
+test('loadPlatforms skips directories without adaptor.md', async () => {
   const root = await tempDir();
   const skillDir = path.join(root, 'skill');
   const platformsDir = path.join(skillDir, 'platforms');

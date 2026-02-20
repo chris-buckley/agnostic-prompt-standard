@@ -1,57 +1,70 @@
+"""Tests that validate platform adapter file conventions."""
+
 from __future__ import annotations
 
-import json
+import re
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SKILL_ROOT = REPO_ROOT / "skill" / "agnostic-prompt-standard"
-PLATFORMS_DIR = SKILL_ROOT / "platforms"
-SCHEMA_PATH = PLATFORMS_DIR / "_schemas" / "platform-manifest.schema.json"
+from aps_cli.parsers.adaptor import parse_adaptor_md
+
+PLATFORMS_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "skill"
+    / "agnostic-prompt-standard"
+    / "platforms"
+)
+
+FORMAT_ID_RE = re.compile(r'<format\b[^>]*\bid="([^"]+)"')
 
 
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def test_platform_manifest_schema_requires_file_conventions() -> None:
-    schema = _read_json(SCHEMA_PATH)
-    required = schema.get("required")
-    assert isinstance(required, list), "schema.required must be a list"
-    assert "fileConventions" in required, (
-        'schema.required must include "fileConventions"'
-    )
-
-
-def test_every_platform_manifest_includes_file_conventions() -> None:
-    platform_dirs = [
-        p for p in PLATFORMS_DIR.iterdir() if p.is_dir() and p.name != "_schemas"
+def _platform_dirs() -> list[Path]:
+    return [
+        p
+        for p in PLATFORMS_DIR.iterdir()
+        if p.is_dir() and not p.name.startswith("_")
     ]
 
-    for platform_dir in platform_dirs:
-        manifest_path = platform_dir / "manifest.json"
-        assert manifest_path.exists(), f"Missing manifest.json in {platform_dir.name}"
 
-        manifest = _read_json(manifest_path)
-        fc = manifest.get("fileConventions")
-        assert isinstance(fc, dict), (
-            f'Platform "{platform_dir.name}" must define fileConventions'
-        )
+def test_each_platform_has_adaptor_md():
+    if not PLATFORMS_DIR.exists():
+        return
 
-        instructions = fc.get("instructions")
-        assert isinstance(instructions, list) and instructions, (
-            f'Platform "{platform_dir.name}" must define fileConventions.instructions array'
-        )
+    for platform in _platform_dirs():
+        adaptor = platform / "adaptor.md"
+        assert adaptor.exists(), f"Missing adaptor.md in {platform.name}"
 
 
-def test_schema_enforces_min_items_on_instructions() -> None:
-    schema = _read_json(SCHEMA_PATH)
-    ins = (
-        schema.get("properties", {})
-        .get("fileConventions", {})
-        .get("properties", {})
-        .get("instructions")
-    )
-    assert ins is not None, "Schema must define fileConventions.instructions"
-    assert isinstance(ins.get("minItems"), int) and ins["minItems"] >= 1, (
-        "Schema must enforce minItems >= 1 on instructions"
-    )
+def test_adaptor_has_required_constants():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        assert isinstance(data.constants.get("PLATFORM_ID"), str)
+        assert isinstance(data.constants.get("DISPLAY_NAME"), str)
+        assert isinstance(data.constants.get("ADAPTER_VERSION"), str)
+
+
+def test_adaptor_has_unique_format_ids():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        raw = (platform / "adaptor.md").read_text(encoding="utf-8")
+        ids = FORMAT_ID_RE.findall(raw)
+        assert len(ids) == len(set(ids)), f"Duplicate <format id> values in {platform.name}"
+
+
+def test_agent_versioning_is_valid_json_when_present():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        if "AGENT_VERSIONING" not in data.constants:
+            continue
+
+        av = data.constants["AGENT_VERSIONING"]
+        assert isinstance(av, dict), f"AGENT_VERSIONING must be an object in {platform.name}"
+        templates = av.get("templates")
+        assert isinstance(templates, list), f"AGENT_VERSIONING.templates must be a list in {platform.name}"
