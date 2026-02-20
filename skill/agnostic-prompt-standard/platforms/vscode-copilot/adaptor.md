@@ -40,7 +40,6 @@ file_search,search,search/fileSearch,file_search,#fileSearch,low,reads,"Search f
 grep_search,search,search/textSearch,grep_search,#textSearch,low,reads,"Fast text search with exact string or regex."
 get_search_view_results,search,search/searchResults,get_search_view_results,#searchResults,low,reads,"Get results from the Search view."
 read_file,read,read/readFile,read_file,#readFile,low,reads,"Read contents of a file (1-indexed line range)."
-list_dir,read,read/listDir,list_dir,#listDir,low,reads,"List directory contents."
 get_errors,read,read/problems,get_errors,#problems,low,reads,"Get compile or lint errors."
 terminal_last_command,read,read/terminalLastCommand,terminal_last_command,#terminalLastCommand,low,reads,"Get last command run in active terminal."
 terminal_selection,read,read/terminalSelection,terminal_selection,#terminalSelection,low,reads,"Get current selection in active terminal."
@@ -74,7 +73,7 @@ manage_todo_list,,todo,manage_todo_list,#todo,low,none,"Manage a structured todo
 >>
 
 RECOMMENDED_PLANNER_TOOLS: ["search/codebase", "search/fileSearch", "search/textSearch", "search/changes", "search/usages", "read/readFile", "read/problems", "todo", "web/fetch", "web/githubRepo"]
-RECOMMENDED_IMPLEMENTER_TOOLS: ["search/codebase", "search/fileSearch", "search/textSearch", "read/readFile", "read/listDir", "read/problems", "edit/createDirectory", "edit/createFile", "edit/editFiles", "execute/runInTerminal", "execute/getTerminalOutput", "todo", "web/fetch", "web/githubRepo", "agent/runSubagent"]
+RECOMMENDED_IMPLEMENTER_TOOLS: ["search/codebase", "search/fileSearch", "search/textSearch", "read/readFile", "read/problems", "edit/createDirectory", "edit/createFile", "edit/editFiles", "execute/runInTerminal", "execute/getTerminalOutput", "todo", "web/fetch", "web/githubRepo", "agent/runSubagent"]
 
 AGENT_MODELS: ["Claude Haiku 4.5 (copilot)", "Claude Opus 4.5 (copilot)", "Claude Sonnet 4 (copilot)", "Claude Sonnet 4.5 (copilot)", "Gemini 2.5 Pro (copilot)", "GPT-4.1 (copilot)"]
 
