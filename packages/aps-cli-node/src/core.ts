@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { existsSync, type Dirent } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { parseAdaptorMd, getString } from './parsers/adaptor.js';
 
@@ -35,9 +36,19 @@ export async function isDirectory(p: string): Promise<boolean> {
 }
 
 /**
- * Resolve the payload skill directory (used when running from within the monorepo).
+ * Resolve the APS skill directory.
+ *
+ * Resolution order:
+ * 1) Bundled package payload (works for `npx @agnostic-prompt/aps ...`)
+ * 2) Monorepo dev layout relative to cwd
  */
 export async function resolvePayloadSkillDir(): Promise<string> {
+  // Packaged payload (dist/.. -> payload/<skill>)
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const packaged = path.resolve(here, '..', 'payload', SKILL_ID);
+  if (await isDirectory(packaged)) return packaged;
+
+  // Monorepo/dev fallback: look relative to where the user invoked the CLI.
   const cwd = process.cwd();
   const candidate = path.join(cwd, APS_PAYLOAD_SKILL_DIR);
   if (await isDirectory(candidate)) return candidate;
@@ -45,7 +56,7 @@ export async function resolvePayloadSkillDir(): Promise<string> {
   const up = path.resolve(cwd, '..', '..', APS_PAYLOAD_SKILL_DIR);
   if (await isDirectory(up)) return up;
 
-  throw new Error(`Cannot locate payload skill directory. Tried: ${candidate}, ${up}`);
+  throw new Error(`Cannot locate payload skill directory. Tried: ${packaged}, ${candidate}, ${up}`);
 }
 
 /**
