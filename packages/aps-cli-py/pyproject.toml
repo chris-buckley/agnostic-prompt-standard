@@ -35,8 +35,11 @@ Repository = "https://github.com/chris-buckley/agnostic-prompt-standard.git"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["aps_cli"]
 include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["aps_cli*"]
 
 [tool.setuptools.package-data]
 aps_cli = ["payload/**"]
