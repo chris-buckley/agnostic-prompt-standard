@@ -55,3 +55,7 @@ jobs:
         run: |
           python tools/sync_payload.py --python
           python -m build --outdir packages/aps-cli-py/dist packages/aps-cli-py
+      - name: Smoke-test installed wheel
+        run: |
+          pip install packages/aps-cli-py/dist/*.whl
+          python -c "from aps_cli.cli import main; print('wheel import ok')"
