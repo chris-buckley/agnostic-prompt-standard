@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agnostic-prompt-aps"
-version = "1.1.13"
+version = "1.1.14"
 description = "CLI to install and manage the Agnostic Prompt Standard (APS) skill and platform templates."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,8 +35,11 @@ Repository = "https://github.com/chris-buckley/agnostic-prompt-standard.git"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["aps_cli"]
 include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["aps_cli*"]
 
 [tool.setuptools.package-data]
 aps_cli = ["payload/**"]
