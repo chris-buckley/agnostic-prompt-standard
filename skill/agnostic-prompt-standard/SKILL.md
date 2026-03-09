@@ -49,6 +49,13 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `format-markdown-table-v1.0.0.example.md`
     - `format-smeac-plan-v1.0.0.example.md`
     - `format-table-api-coverage-v1.0.0.example.md`
+- `_template/` — minimal skill skeleton for scaffolding new skills.
+  - `SKILL.md` — stub entrypoint with placeholder frontmatter.
+  - `references/`, `assets/constants/`, `assets/formats/`, `processes/`, `scripts/`, `guides/` — empty placeholder directories.
+- `processes/` — executable APS process documents (skill-specific workflows).
+  - `build-skill.md` — process for building new APS-compliant skills.
+- `guides/` — reference documents for humans and agents.
+  - `skill-authoring-v1.0.0.guide.md` — skill authoring reference.
 - `platforms/` — **non-normative** platform adapters. Each platform has a single `adaptor.md` file.
   - `README.md` — platforms overview and contract.
   - `_template/` — skeleton for new platform adapters.
