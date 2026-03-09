@@ -76,13 +76,21 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-      "current_path": "templates/.claude/agents/aps-v1.1.15.md",
+      "current_path": "templates/.claude/agents/aps-v1.1.16.md",
       "frontmatter": {
         "name_pattern": "aps-v{major}-{minor}-{patch}",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint."
       }
     }
   ]
+}
+>>
+
+SKILL_AUTHORING_RESOURCES: JSON<<
+{
+  "guide": "guides/skill-authoring-v1.0.0.guide.md",
+  "template": "_template/",
+  "build_process": "processes/build-skill.md"
 }
 >>
 
