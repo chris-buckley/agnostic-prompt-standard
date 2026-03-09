@@ -7,6 +7,22 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 
+class SkillMetadata(BaseModel):
+    """Schema for the optional metadata sub-object in SKILL.md frontmatter.
+
+    Captures provenance, authorship, and version-tracking fields.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    repository: Optional[str] = None
+    author: Optional[str] = None
+    co_authors: Optional[str] = None
+    spec_version: Optional[str] = None
+    framework_revision: Optional[str] = None
+    last_updated: Optional[str] = None
+
+
 class SkillFrontmatter(BaseModel):
     """Schema for SKILL.md frontmatter."""
 
@@ -17,6 +33,7 @@ class SkillFrontmatter(BaseModel):
     description: Optional[str] = None
     author: Optional[str] = None
     license: Optional[str] = None
+    metadata: Optional[SkillMetadata] = None
 
 
 def parse_skill_frontmatter(data: dict) -> SkillFrontmatter:
