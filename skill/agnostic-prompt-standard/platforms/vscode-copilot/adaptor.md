@@ -82,13 +82,21 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-      "current_path": "templates/.github/agents/aps-v1.1.15.agent.md",
+      "current_path": "templates/.github/agents/aps-v1.1.16.agent.md",
       "frontmatter": {
         "name_pattern": "APS v{major}.{minor}.{patch} Agent",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+write+lint."
       }
     }
   ]
+}
+>>
+
+SKILL_AUTHORING_RESOURCES: JSON<<
+{
+  "guide": "guides/skill-authoring-v1.0.0.guide.md",
+  "template": "_template/",
+  "build_process": "processes/build-skill.md"
 }
 >>
 
@@ -106,7 +114,7 @@ DOCS_CUSTOM_INSTRUCTIONS_URL: "https://code.visualstudio.com/docs/copilot/custom
 name: <AGENT_NAME>
 description: "<AGENT_DESCRIPTION>"
 tools: <TOOLS_ARRAY>
-user-invokable: <USER_INVOKABLE>
+user-invocable: <USER_INVOCABLE>
 disable-model-invocation: <DISABLE_MODEL_INVOCATION>
 target: <TARGET>
 ---
@@ -115,7 +123,7 @@ WHERE:
 - <AGENT_NAME> is String; the agent identifier shown in UI.
 - <AGENT_DESCRIPTION> is String; single-line quoted string describing agent purpose.
 - <TOOLS_ARRAY> is YAML array of tool qualified names or toolset names from TOOLS constant.
-- <USER_INVOKABLE> is Boolean; true if agent appears in the agents dropdown; default true.
+- <USER_INVOCABLE> is Boolean; true if agent appears in the agents dropdown; default true.
 - <DISABLE_MODEL_INVOCATION> is Boolean; true to prevent invocation as subagent; default false.
 - <TARGET> is one of: "vscode", "github-copilot"; default "vscode".
 </format>
