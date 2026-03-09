@@ -1,4 +1,6 @@
 export {
+  SkillMetadataSchema,
+  type SkillMetadata,
   SkillFrontmatterSchema,
   type SkillFrontmatter,
   parseSkillFrontmatter,

@@ -1,6 +1,23 @@
 import { z } from 'zod';
 
 /**
+ * Schema for the optional metadata sub-object in SKILL.md frontmatter.
+ * Captures provenance, authorship, and version-tracking fields.
+ */
+export const SkillMetadataSchema = z
+  .object({
+    repository: z.string().optional(),
+    author: z.string().optional(),
+    co_authors: z.string().optional(),
+    spec_version: z.string().optional(),
+    framework_revision: z.string().optional(),
+    last_updated: z.string().optional(),
+  })
+  .passthrough();
+
+export type SkillMetadata = z.infer<typeof SkillMetadataSchema>;
+
+/**
  * Schema for SKILL.md frontmatter.
  * Validates the YAML frontmatter structure in skill files.
  */
@@ -11,6 +28,7 @@ export const SkillFrontmatterSchema = z
     description: z.string().optional(),
     author: z.string().optional(),
     license: z.string().optional(),
+    metadata: SkillMetadataSchema.optional(),
   })
   .passthrough();
 

@@ -80,63 +80,85 @@ The core abstraction is a structured prompt envelope with seven ordered sections
 SKILL_TREE: TEXT<<
 skill/
   agnostic-prompt-standard/
+    _template/
+      SKILL.md Minimal skill stub with placeholder frontmatter
+      references/
+        .gitkeep Placeholder for reference documents
+      assets/
+        constants/
+          .gitkeep Placeholder for constant blocks
+        formats/
+          .gitkeep Placeholder for format contracts
+      processes/
+        .gitkeep Placeholder for process documents
+      scripts/
+        .gitkeep Placeholder for scripts
+      guides/
+        .gitkeep Placeholder for guide documents
     assets/
       constants/
-        constants-json-block-v1.0.0.example.md    JSON block constant syntax example
-        constants-text-block-v1.0.0.example.md    TEXT block constant syntax example
-        constants-csv-block-v1.0.0.example.md     CSV block constant syntax example
+        constants-json-block-v1.0.0.example.md JSON block constant syntax example
+        constants-text-block-v1.0.0.example.md TEXT block constant syntax example
+        constants-csv-block-v1.0.0.example.md CSV block constant syntax example
       formats/
-        format-code-changes-full-v1.0.0.example.md        Full file code changes template
-        format-code-map-v1.0.0.example.md                 Code snippets with source links
-        format-docs-index-v1.0.0.example.md               Documentation index format
-        format-error-v1.0.0.example.md                    Single-line error output format
-        format-hierarchical-outline-v1.0.0.example.md     Multilevel numbered outline template
-        format-ideation-list-v1.0.0.example.md            Structured brainstorming ideas format
-        format-link-manifest-v1.0.0.example.md            Link manifest format template
-        format-markdown-table-v1.0.0.example.md           Process results table format
-        format-smeac-plan-v1.0.0.example.md               SMEAC-style plan format
-        format-table-api-coverage-v1.0.0.example.md       API coverage gap analysis table
+        format-code-changes-full-v1.0.0.example.md Full file code changes template
+        format-code-map-v1.0.0.example.md Code snippets with source links
+        format-docs-index-v1.0.0.example.md Documentation index format
+        format-error-v1.0.0.example.md Single-line error output format
+        format-hierarchical-outline-v1.0.0.example.md Multilevel numbered outline template
+        format-ideation-list-v1.0.0.example.md Structured brainstorming ideas format
+        format-link-manifest-v1.0.0.example.md Link manifest format template
+        format-markdown-table-v1.0.0.example.md Process results table format
+        format-smeac-plan-v1.0.0.example.md SMEAC-style plan format
+        format-table-api-coverage-v1.0.0.example.md API coverage gap analysis table
       composites/
-        gui-component-spec-v1.0.0.example.md    GUI component vocabulary and format contract
+        gui-component-spec-v1.0.0.example.md GUI component vocabulary and format contract
+    guides/
+      skill-authoring-v1.0.0.guide.md Skill authoring reference for humans and agents
     platforms/
       claude-code/
-        adaptor.md                            Platform adapter (single source of truth)
+        adaptor.md Platform adapter (single source of truth)
         templates/
           .claude/
             agents/
-              aps-v{VERSION}.md               APS agent protocol template (versioned)
+              aps-v{VERSION}.md APS agent protocol template (versioned)
       opencode/
-        adaptor.md                            Platform adapter (single source of truth)
+        adaptor.md Platform adapter (single source of truth)
       vscode-copilot/
-        adaptor.md                            Platform adapter (single source of truth)
+        adaptor.md Platform adapter (single source of truth)
         templates/
           .github/
             agents/
-              aps-v{VERSION}.agent.md         APS prompt protocol agent template (versioned)
+              aps-v{VERSION}.agent.md APS prompt protocol agent template (versioned)
       _template/
-        adaptor.md                            Starter adapter for new platforms
+        adaptor.md Starter adapter for new platforms
         templates/
           .github/
             agents/
-              .gitkeep                        Placeholder for agent templates
-      README.md                               Platforms overview and adapter contract
+              .gitkeep Placeholder for agent templates
+      README.md Platforms overview and adapter contract
+    processes/
+      build-skill.md Full APS document for building new skills
     references/
-      00-structure.md                         Prompt sections and envelope rules
-      01-vocabulary.md                        Normative language and authoring rules
-      02-linting-and-formatting.md            Compile-time formatting rules
-      03-agentic-control.md                   DSL keywords and control flow
-      04-schemas-and-types.md                 Schemas and format contracts
-      05-grammar.md                           EBNF grammar for DSL
-      06-logging-and-privacy.md               Logging and redaction requirements
-      07-error-taxonomy.md                    Error and warning codes
+      00-structure.md Prompt sections and envelope rules
+      01-vocabulary.md Normative language and authoring rules
+      02-linting-and-formatting.md Compile-time formatting rules
+      03-agentic-control.md DSL keywords and control flow
+      04-schemas-and-types.md Schemas and format contracts
+      05-grammar.md EBNF grammar for DSL
+      06-logging-and-privacy.md Logging and redaction requirements
+      07-error-taxonomy.md Error and warning codes
     scripts/
-      .gitkeep                                Placeholder for future scripts
-    SKILL.md                                  Skill entrypoint and layout overview
+      .gitkeep Placeholder for future scripts
+    SKILL.md Skill entrypoint and layout overview
 >>
 
 SKILL_FOLDERS_DESC: TEXT<<
 The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
 The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `composites/` subfolders that can be used when building APS-compliant prompts. Composites bundle tightly coupled `<constants>` and `<formats>` in a single file where the format contract references the constants as its type vocabulary.
+The `processes/` folder contains executable APS process documents that encode skill-specific workflows. Each process file is a full 7-section APS document loaded by agents on demand. This is a skill capability, not a fourth APS layer.
+The `guides/` folder contains reference documents for human and agent consumption. Guides provide authoring guidance, best practices, and design patterns, and may use APS envelope format or prose markdown.
+The `_template/` folder contains a minimal skill skeleton used to scaffold new skills. It ships with the payload after `aps init` and includes a stub SKILL.md with placeholder frontmatter plus empty directories for references, assets, processes, scripts, and guides.
 The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
 The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability) without changing the core APS spec. The `claude-code/` adapter (used with `--platform claude-code`) is particularly important for Claude Code CLI users, alongside `opencode/` and `vscode-copilot/` adapters plus templates for creating new adapters.
 >>
