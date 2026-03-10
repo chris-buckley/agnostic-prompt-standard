@@ -7,7 +7,7 @@ metadata:
   author: "Christopher Buckley"
   co_authors: "Juan Burckhardt; Anastasiya Smirnova"
   spec_version: "1.0"
-  framework_revision: "1.1.16"
+  framework_revision: "1.1.17"
   last_updated: "2026-02-18"
 ---
 
@@ -38,6 +38,9 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `constants-json-block-v1.0.0.example.md`
     - `constants-text-block-v1.0.0.example.md`
     - `constants-csv-block-v1.0.0.example.md`
+  - `composites/` — combined reference examples.
+    - `gui-component-spec-v1.0.0.example.md`
+    - `mcp-tool-bridge-v1.0.0.example.md`
   - `formats/` — example format blocks.
     - `format-code-changes-full-v1.0.0.example.md`
     - `format-code-map-v1.0.0.example.md`
@@ -62,6 +65,8 @@ This `SKILL.md` is the **entrypoint** for the Agnostic Prompt Standard (APS) v1.
     - `adaptor.md`
   - `claude-code/` — Claude Code CLI adapter.
     - `adaptor.md` — platform constants, tool registry, and format contracts.
+  - `generic/` — generic / external tools adapter.
+    - `adaptor.md` — neutral tool mapping guidance for MCP or other external tool layers.
   - `opencode/` — OpenCode adapter.
     - `adaptor.md` — platform constants.
   - `vscode-copilot/` — VS Code + GitHub Copilot adapter.

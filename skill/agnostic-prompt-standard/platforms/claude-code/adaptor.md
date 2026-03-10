@@ -7,6 +7,7 @@ Rules are stored in .claude/rules/*.md with optional path-scoped YAML frontmatte
 File imports use @path syntax (e.g., @README.md, @docs/guide.md, @~/.claude/shared-rules.md).
 Hooks execute shell commands at lifecycle events and are configured in .claude/settings.json.
 Permissions use Tool(specifier) with allow/deny/ask arrays in .claude/settings.json.
+Claude Code stores project-scoped MCP servers in .mcp.json at the project root and user/local MCP servers in ~/.claude.json.
 Tools in frontmatter are comma-separated strings (e.g., tools: Read, Write, Edit).
 </instructions>
 
@@ -18,7 +19,7 @@ LAST_UPDATED: "2026-02-19"
 
 INSTRUCTION_FILE_PATHS: ["./CLAUDE.md", "./.claude/CLAUDE.md", "./.claude/rules/*.md", "./CLAUDE.local.md", "~/.claude/CLAUDE.md", "~/.claude/rules/*.md"]
 AGENT_FILE_PATHS: ["./.claude/agents/*.md", "~/.claude/agents/*.md"]
-MCP_CONFIG_PATHS: ["./.mcp.json"]
+MCP_CONFIG_PATHS: ["./.mcp.json", "~/.claude.json"]
 SETTINGS_FILE_PATHS: ["./.claude/settings.json", "./.claude/settings.local.json", "~/.claude/settings.json"]
 MEMORY_LOAD_ORDER: [INSTRUCTION_FILE_PATHS, AGENT_FILE_PATHS, MCP_CONFIG_PATHS, SETTINGS_FILE_PATHS]
 
@@ -76,7 +77,7 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-      "current_path": "templates/.claude/agents/aps-v1.1.16.md",
+      "current_path": "templates/.claude/agents/aps-v1.1.17.md",
       "frontmatter": {
         "name_pattern": "aps-v{major}-{minor}-{patch}",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint."
