@@ -4,6 +4,7 @@ import pytest
 
 from aps_cli.core import (
     DEFAULT_ADAPTER_ORDER,
+    compute_install_families,
     compute_skill_destinations,
     detect_adapters,
     detect_platforms,
@@ -230,7 +231,7 @@ def test_compute_skill_destinations_empty_defaults_to_non_claude(tmp_path: Path)
 
 def test_default_adapter_order():
     """Test that DEFAULT_ADAPTER_ORDER contains known adapters."""
-    assert DEFAULT_ADAPTER_ORDER == ("vscode-copilot", "claude-code", "opencode")
+    assert DEFAULT_ADAPTER_ORDER == ("vscode-copilot", "claude-code", "opencode", "generic")
 
 
 def test_sort_platforms_for_ui():
@@ -243,12 +244,22 @@ def test_sort_platforms_for_ui():
         Platform("vscode-copilot", "VS Code Copilot", None, ()),
         Platform("aaa-platform", "AAA Platform", None, ()),
         Platform("claude-code", "Claude Code", None, ()),
+        Platform("generic", "Generic / External Tools", None, ()),
     ]
 
     sorted_platforms = sort_platforms_for_ui(platforms)
     sorted_ids = [p.platform_id for p in sorted_platforms]
 
     # Known adapters should come first in order
-    assert sorted_ids[:3] == ["vscode-copilot", "claude-code", "opencode"]
+    assert sorted_ids[:4] == ["vscode-copilot", "claude-code", "opencode", "generic"]
     # Remaining should be alphabetically sorted by display name
-    assert sorted_ids[3:] == ["aaa-platform", "zzz-platform"]
+    assert sorted_ids[4:] == ["aaa-platform", "zzz-platform"]
+
+def test_compute_install_families_generic_only_defaults_to_non_claude():
+    """Generic adapter alone should keep the historical non-Claude fallback."""
+    assert compute_install_families(["generic"]) == (False, True)
+
+
+def test_compute_install_families_generic_plus_claude_keeps_claude_only():
+    """Generic adapter must not force a non-Claude install family."""
+    assert compute_install_families(["generic", "claude-code"]) == (True, False)

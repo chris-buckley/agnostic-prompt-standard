@@ -10,9 +10,9 @@ from .parsers.adaptor import parse_adaptor_md, get_string, get_string_array
 
 SKILL_ID = "agnostic-prompt-standard"
 
-DEFAULT_ADAPTER_ORDER: tuple[str, ...] = ("vscode-copilot", "claude-code", "opencode")
+DEFAULT_ADAPTER_ORDER: tuple[str, ...] = ("vscode-copilot", "claude-code", "opencode", "generic")
 
-KnownAdapterId = Literal["vscode-copilot", "claude-code", "opencode"]
+KnownAdapterId = Literal["vscode-copilot", "claude-code", "opencode", "generic"]
 
 
 @dataclass(frozen=True)
@@ -32,6 +32,7 @@ class Platform:
     display_name: str
     adapter_version: Optional[str]
     detection_markers: tuple[DetectionMarker, ...] = field(default_factory=tuple)
+    mcp_config_paths: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -87,17 +88,28 @@ def is_claude_platform(platform_id: str) -> bool:
     return platform_id == "claude-code"
 
 
+def is_generic_platform(platform_id: str) -> bool:
+    """Check if platform is install-family neutral."""
+    return platform_id == "generic"
+
+
+def compute_install_families(
+    selected_platforms: list[str],
+) -> tuple[bool, bool]:
+    """Return include_claude, include_non_claude for the selected platforms."""
+    concrete_platforms = [p for p in selected_platforms if not is_generic_platform(p)]
+    wants_claude = any(is_claude_platform(p) for p in concrete_platforms)
+    wants_non_claude = any(not is_claude_platform(p) for p in concrete_platforms)
+    return wants_claude, wants_non_claude or len(concrete_platforms) == 0
+
+
 def compute_skill_destinations(
     scope: Literal["repo", "personal"],
     workspace_root: Optional[Path],
     selected_platforms: list[str],
 ) -> list[Path]:
     """Compute skill installation destinations based on selected platforms."""
-    wants_claude = any(is_claude_platform(p) for p in selected_platforms)
-    wants_non_claude = any(not is_claude_platform(p) for p in selected_platforms)
-
-    include_claude = wants_claude
-    include_non_claude = wants_non_claude or len(selected_platforms) == 0
+    include_claude, include_non_claude = compute_install_families(selected_platforms)
 
     if scope == "repo":
         if not workspace_root:
@@ -191,6 +203,7 @@ def _load_platform_from_adaptor(
             display_name=get_string(data.constants, "DISPLAY_NAME", dir_name),
             adapter_version=get_string(data.constants, "ADAPTER_VERSION") or None,
             detection_markers=detection_markers,
+            mcp_config_paths=tuple(get_string_array(data.constants, "MCP_CONFIG_PATHS")),
         )
     except Exception:
         return None

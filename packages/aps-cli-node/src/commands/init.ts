@@ -4,6 +4,7 @@ import process from 'node:process';
 import { checkbox, confirm, input, select } from '@inquirer/prompts';
 
 import {
+  computeInstallFamilies,
   copyDir,
   copyTemplateTree,
   defaultPersonalSkillPath,
@@ -38,6 +39,7 @@ export interface InitCliOptions {
 }
 
 type InstallScope = 'repo' | 'personal';
+type ToolIntent = 'native' | 'mcp' | 'mixed' | 'agnostic';
 
 function isTTY(): boolean {
   return Boolean(process.stdout.isTTY && process.stdin.isTTY);
@@ -104,27 +106,19 @@ interface PlannedSkillInstall {
 interface InitPlan {
   scope: InstallScope;
   workspaceRoot: string | null;
+  toolIntent: ToolIntent | null;
   selectedPlatforms: string[];
   payloadSkillDir: string;
   skills: PlannedSkillInstall[];
   templates: PlannedPlatformTemplates[];
 }
 
-function isClaudePlatform(platformId: string): boolean {
-  return platformId === 'claude-code';
-}
-
-function computeSkillDestinations(
+export function computeSkillDestinations(
   scope: InstallScope,
   workspaceRoot: string | null,
   selectedPlatforms: readonly string[]
 ): string[] {
-  const wantsClaude = selectedPlatforms.some((p) => isClaudePlatform(p));
-  const wantsNonClaude = selectedPlatforms.some((p) => !isClaudePlatform(p));
-
-  // If no adapters are selected, default to non-Claude location (historical behaviour).
-  const includeClaude = wantsClaude;
-  const includeNonClaude = wantsNonClaude || selectedPlatforms.length === 0;
+  const { includeClaude, includeNonClaude } = computeInstallFamilies(selectedPlatforms);
 
   if (scope === 'repo') {
     if (!workspaceRoot) throw new Error('Repo install selected but no workspace root found.');
@@ -190,8 +184,55 @@ async function planPlatformTemplates(
   return plans;
 }
 
+function defaultToolIntent(detections: Record<string, AdapterDetection> | null): ToolIntent {
+  if (!detections) return 'agnostic';
+  return Object.values(detections).some((d) => d.detected) ? 'native' : 'agnostic';
+}
+
+function defaultSelectedPlatformsForToolIntent(
+  availablePlatformIds: readonly string[],
+  detections: Record<string, AdapterDetection> | null,
+  toolIntent: ToolIntent
+): string[] {
+  const detectedConcrete = availablePlatformIds.filter((platformId) => {
+    if (platformId === 'generic') return false;
+    const det = detectionFor(platformId, detections);
+    return Boolean(det?.detected);
+  });
+
+  const includeGeneric = availablePlatformIds.includes('generic');
+
+  switch (toolIntent) {
+    case 'native':
+      return detectedConcrete;
+    case 'agnostic':
+      return includeGeneric ? ['generic'] : [];
+    case 'mcp':
+    case 'mixed':
+      return includeGeneric ? unique([...detectedConcrete, 'generic']) : detectedConcrete;
+  }
+}
+
+function formatToolIntent(toolIntent: ToolIntent): string {
+  switch (toolIntent) {
+    case 'native':
+      return 'native host tools';
+    case 'mcp':
+      return 'external MCP tools';
+    case 'mixed':
+      return 'mixed native + MCP tools';
+    case 'agnostic':
+      return 'tool-agnostic / no fixed tool surface';
+  }
+}
+
 function renderPlan(plan: InitPlan, opts: { force: boolean }): string {
   const lines: string[] = [];
+
+  if (plan.toolIntent) {
+    lines.push(`Tool source intent: ${formatToolIntent(plan.toolIntent)}`);
+    lines.push('');
+  }
 
   lines.push('Selected adapters:');
   if (plan.selectedPlatforms.length === 0) {
@@ -270,11 +311,27 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   const cliPlatforms = normalizePlatformArgs(options.platform);
 
   // Determine platform selection
+  let toolIntent: ToolIntent | null = null;
   let selectedPlatforms: string[] = [];
 
   if (cliPlatforms !== undefined) {
     selectedPlatforms = cliPlatforms;
   } else if (!options.yes && isTTY()) {
+    toolIntent = await select({
+      message: 'Which tool surface best matches this workspace?',
+      default: defaultToolIntent(detections),
+      choices: [
+        { name: 'Native host tools only', value: 'native' },
+        { name: 'External tools only (MCP / declarations)', value: 'mcp' },
+        { name: 'Mixed native + external tools', value: 'mixed' },
+        { name: 'Tool-agnostic / no fixed tool surface', value: 'agnostic' },
+      ],
+    });
+
+    const defaultSelectedPlatforms = new Set(
+      defaultSelectedPlatformsForToolIntent(availablePlatformIds, detections, toolIntent)
+    );
+
     const choices = [
       {
         name: selectAllChoiceLabel(),
@@ -284,7 +341,7 @@ export async function runInit(options: InitCliOptions): Promise<void> {
       ...availablePlatformIds.map((platformId) => {
         const det = detectionFor(platformId, detections);
         const label = det ? formatDetectionLabel(det) : '';
-        const checked = Boolean(det?.detected);
+        const checked = defaultSelectedPlatforms.has(platformId);
         return {
           name: `${platformDisplayName(platformId, platformsById)} (${platformId})${label}`,
           value: platformId,
@@ -327,15 +384,14 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   if (!options.yes && isTTY()) {
     if (!installScope) {
       // Compute resolved display paths for each scope.
-      const wantsClaude = selectedPlatforms.some((p) => isClaudePlatform(p));
-      const wantsNonClaude = selectedPlatforms.some((p) => !isClaudePlatform(p)) || selectedPlatforms.length === 0;
+      const { includeClaude, includeNonClaude } = computeInstallFamilies(selectedPlatforms);
       const projectPaths: string[] = [];
       const personalPaths: string[] = [];
-      if (wantsNonClaude) {
+      if (includeNonClaude) {
         if (repoRoot) projectPaths.push(fmtPath(defaultProjectSkillPath(repoRoot, { claude: false })));
         personalPaths.push(fmtPath(defaultPersonalSkillPath({ claude: false })));
       }
-      if (wantsClaude) {
+      if (includeClaude) {
         if (repoRoot) projectPaths.push(fmtPath(defaultProjectSkillPath(repoRoot, { claude: true })));
         personalPaths.push(fmtPath(defaultPersonalSkillPath({ claude: true })));
       }
@@ -387,6 +443,7 @@ export async function runInit(options: InitCliOptions): Promise<void> {
   const plan: InitPlan = {
     scope: installScope,
     workspaceRoot,
+    toolIntent,
     selectedPlatforms,
     payloadSkillDir,
     skills,

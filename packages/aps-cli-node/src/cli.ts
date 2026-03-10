@@ -39,6 +39,7 @@ export async function main(argv: string[]): Promise<void> {
     .description('Check APS installation status + basic platform detection')
     .option('--root <path>', 'Workspace root path (defaults to git repo root if found)')
     .option('--json', 'Output JSON format', false)
+    .option('--validate-mcp', 'Validate declared MCP config paths', false)
     .action((opts) =>
       runDoctor(opts).catch((e: unknown) => {
         const message = e instanceof Error ? e.message : String(e);

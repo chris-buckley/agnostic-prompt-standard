@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 
-import { findRepoRoot, inferPlatformId } from '../dist/core.js';
+import { computeInstallFamilies, findRepoRoot, inferPlatformId } from '../dist/core.js';
 
 async function tempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-node-'));
@@ -33,4 +33,19 @@ test('inferPlatformId detects vscode-copilot via .github/prompts', async () => {
   await fs.mkdir(path.join(root, '.github', 'prompts'), { recursive: true });
   const platform = inferPlatformId(root);
   assert.equal(platform, 'vscode-copilot');
+});
+
+
+test('computeInstallFamilies treats generic as install-family neutral', () => {
+  assert.deepEqual(computeInstallFamilies(['generic']), {
+    includeClaude: false,
+    includeNonClaude: true,
+  });
+});
+
+test('computeInstallFamilies keeps claude-only install when generic is combined with claude-code', () => {
+  assert.deepEqual(computeInstallFamilies(['generic', 'claude-code']), {
+    includeClaude: true,
+    includeNonClaude: false,
+  });
 });
