@@ -6,7 +6,7 @@ import os from 'node:os';
 import { existsSync, type Dirent } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { parseAdaptorMd, getString } from './parsers/adaptor.js';
+import { parseAdaptorMd, getString, getStringArray } from './parsers/adaptor.js';
 
 export const APS_PAYLOAD_SKILL_DIR = 'skill/agnostic-prompt-standard';
 export const SKILL_ID = 'agnostic-prompt-standard' as const;
@@ -76,6 +76,37 @@ export function defaultProjectSkillPath(workspaceRoot: string, opts: { claude?: 
 }
 
 /**
+ * Check if a platform uses Claude-specific install paths.
+ */
+export function isClaudePlatform(platformId: string): boolean {
+  return platformId === 'claude-code';
+}
+
+/**
+ * Check if a platform is install-family neutral.
+ */
+export function isGenericPlatform(platformId: string): boolean {
+  return platformId === 'generic';
+}
+
+/**
+ * Compute which install families are required for a selection of platform adapters.
+ * Neutral adapters such as `generic` do not force a concrete install family.
+ */
+export function computeInstallFamilies(
+  selectedPlatforms: readonly string[]
+): { includeClaude: boolean; includeNonClaude: boolean } {
+  const concretePlatforms = selectedPlatforms.filter((p) => !isGenericPlatform(p));
+  const wantsClaude = concretePlatforms.some((p) => isClaudePlatform(p));
+  const wantsNonClaude = concretePlatforms.some((p) => !isClaudePlatform(p));
+
+  return {
+    includeClaude: wantsClaude,
+    includeNonClaude: wantsNonClaude || concretePlatforms.length === 0,
+  };
+}
+
+/**
  * Infer a platform adapter from workspace markers.
  */
 export function inferPlatformId(workspaceRoot: string): 'vscode-copilot' | null {
@@ -103,6 +134,7 @@ export interface PlatformInfo {
   adaptorPath: string;
   displayName: string;
   adapterVersion: string | null;
+  mcpConfigPaths: string[];
 }
 
 export type PlatformLoadIssueKind =
@@ -166,6 +198,7 @@ export async function loadPlatformsDetailed(skillDir: string): Promise<LoadPlatf
     const rawPlatformId = getString(data.constants, 'PLATFORM_ID', '').trim();
     const rawDisplayName = getString(data.constants, 'DISPLAY_NAME', '').trim();
     const adapterVersion = getString(data.constants, 'ADAPTER_VERSION', '').trim() || null;
+    const mcpConfigPaths = getStringArray(data.constants, 'MCP_CONFIG_PATHS');
 
     if (rawPlatformId && rawPlatformId !== dirName) {
       issues.push({
@@ -196,6 +229,7 @@ export async function loadPlatformsDetailed(skillDir: string): Promise<LoadPlatf
       adaptorPath,
       displayName: rawDisplayName || dirName,
       adapterVersion,
+      mcpConfigPaths,
     });
   }
 

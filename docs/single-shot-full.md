@@ -21,6 +21,7 @@ Rendered format output MUST be a single fenced block `format:<FORMAT_ID>` with n
 Format placeholders MUST use `<UPPER_SNAKE>` notation; every `<format>` body MUST end with `WHERE:` defining each placeholder exactly once (`AG-041`/`AG-042`/`AG-043`).
 Result process pattern, if adopted, MUST define `TABLE_PROCESS_RESULTS_V1` with status ∈ {PENDING, RUNNING, OK, WARN, ERROR} and ISO 8601 timestamps.
 External files (`config.json`, `predefinedTools.json`, `units.json`) MUST NOT appear in the prompt; `<config>` or `<import>` tags → `AG-035`.
+Imported MCP tool signatures SHOULD be declared through `predefinedTools.json` and `config.json` ALIAS mappings, not inside the prompt.
 If a host provides tools/config via system instructions, the engine MUST ignore duplicate local definitions.
 Prompts claiming APS v1.0 conformance MUST remain within 05-GRAMMAR unless the host explicitly opts into extensions.
 Indentation is significant for block bodies (`WITH`, `PAR`, `JOIN`, `TRY`, `FOREACH`) in 05-GRAMMAR.
@@ -260,6 +261,13 @@ supporting_files:
     - { file: predefinedTools.json, purpose: "tool signatures for lint/IDE help" }
     - { file: units.json, purpose: "unit catalog used by STE layer" }
   predefinedTools_layout: "one tool object per line (RECOMMENDED)"
+  mcp_tool_import:
+    canonical_id: "use Tool.name unless an adapter requires a different stable id"
+    display_name_precedence: [title, annotations.title, name]
+    preserve: [inputSchema, outputSchema]
+    hints: [readOnlyHint, destructiveHint, idempotentHint, openWorldHint]
+    decorated_runtime_names: "map with config.json ALIAS; do not duplicate tool objects"
+    collision: AG-034
 >>
 
 05-GRAMMAR: TEXT<<

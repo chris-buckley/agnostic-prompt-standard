@@ -7,6 +7,7 @@ Agents are stored in .github/agents/*.agent.md with YAML frontmatter.
 Prompt files are stored in .github/prompts/*.prompt.md with YAML frontmatter.
 Instructions are in .github/copilot-instructions.md and .github/instructions/*.instructions.md.
 Skills are at .github/skills/<skill-id>/SKILL.md.
+Workspace MCP servers are configured in .vscode/mcp.json.
 Use toolSet name to include all tools in a set, or qualifiedName for individual tools.
 The functionName is resolved automatically at runtime.
 Generated frontmatter MUST NOT contain YAML comments.
@@ -24,7 +25,9 @@ AGENT_FILE_PATHS: [".github/agents/*.agent.md"]
 PROMPT_FILE_PATHS: [".github/prompts/*.prompt.md"]
 SKILL_FILE_PATHS: [".github/skills/<skill-id>/SKILL.md", "~/.copilot/skills/<skill-id>/SKILL.md"]
 
-DETECTION_MARKERS: [".github/copilot-instructions.md", ".github/agents", ".github/prompts", ".github/instructions", ".github/skills"]
+DETECTION_MARKERS: [".github/copilot-instructions.md", ".github/agents", ".github/prompts", ".github/instructions", ".github/skills", ".vscode/mcp.json"]
+
+MCP_CONFIG_PATHS: [".vscode/mcp.json"]
 
 TOOL_NAMING_STYLE: "three-tier: toolSet / qualifiedName / functionName"
 TOOL_NAMING_QUALIFICATION: "qualifiedName for individual tools, toolSet for all tools in a set"
@@ -82,7 +85,7 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.github/agents/aps-v{major}.{minor}.{patch}.agent.md",
-      "current_path": "templates/.github/agents/aps-v1.1.16.agent.md",
+      "current_path": "templates/.github/agents/aps-v1.1.17.agent.md",
       "frontmatter": {
         "name_pattern": "APS v{major}.{minor}.{patch} Agent",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} .agent.md or .prompt.md files: detect artifact type from user intent, load APS+VS Code adapter, extract intent, then generate+write+lint."
@@ -102,6 +105,7 @@ SKILL_AUTHORING_RESOURCES: JSON<<
 
 DOCS_AGENT_SKILLS_URL: "https://code.visualstudio.com/docs/copilot/customization/agent-skills"
 DOCS_PROMPT_FILES_URL: "https://code.visualstudio.com/docs/copilot/customization/prompt-files"
+DOCS_MCP_URL: "https://code.visualstudio.com/docs/copilot/reference/mcp-configuration"
 DOCS_CUSTOM_AGENTS_URL: "https://code.visualstudio.com/docs/copilot/customization/custom-agents"
 DOCS_TOOLS_IN_CHAT_URL: "https://code.visualstudio.com/docs/copilot/chat/chat-tools"
 DOCS_TOOLS_REFERENCE_URL: "https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features"

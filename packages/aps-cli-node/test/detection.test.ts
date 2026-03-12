@@ -327,5 +327,5 @@ test('formatDetectionLabel returns empty string for non-detected adapters', () =
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('DEFAULT_ADAPTER_ORDER contains all known adapters in correct order', () => {
-  assert.deepEqual(DEFAULT_ADAPTER_ORDER, ['vscode-copilot', 'claude-code', 'opencode']);
+  assert.deepEqual(DEFAULT_ADAPTER_ORDER, ['vscode-copilot', 'claude-code', 'opencode', 'generic']);
 });

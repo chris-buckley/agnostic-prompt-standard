@@ -23,6 +23,7 @@ platforms/
     templates/                    # optional installable agent files
       .claude/agents/             # (claude-code) or
       .github/agents/             # (vscode-copilot)
+      # no templates/              # (generic / external tools)
 ```
 
 The `adaptor.md` file contains three APS sections:
@@ -30,6 +31,9 @@ The `adaptor.md` file contains three APS sections:
 1. `<instructions>` — platform-specific generation instructions
 2. `<constants>` — all metadata: platform ID, detection markers, file conventions, tool registries, agent versioning
 3. `<formats>` — frontmatter and output format contracts
+
+The `generic/` adapter is the neutral option for tool-agnostic or external-tool-only workflows.
+It has no detection markers and no installable templates.
 
 ## Add a new platform adapter
 
