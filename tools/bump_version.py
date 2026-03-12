@@ -4,6 +4,7 @@
 Updates:
 - skill/agnostic-prompt-standard/SKILL.md framework_revision
 - packages/aps-cli-node/package.json version
+- packages/aps-cli-node/package-lock.json top-level + root package version
 - packages/aps-cli-py/pyproject.toml [project].version
 - packages/aps-cli-py/src/aps_cli/__init__.py __version__
 - Platform agent templates (frontmatter + file names) via adaptor.md
@@ -51,6 +52,22 @@ def read_node_version(pkg_json: Path) -> str:
     return v
 
 
+def read_node_lock_version(lock_json: Path) -> str:
+    """Read version from Node package-lock.json and validate the root package entry."""
+    data = json.loads(lock_json.read_text(encoding="utf-8"))
+    top_level_version = data.get("version")
+    root_package_version = data.get("packages", {}).get("", {}).get("version")
+
+    if not isinstance(top_level_version, str):
+        raise SystemExit(f"No top-level version in {lock_json}")
+    if root_package_version is not None and root_package_version != top_level_version:
+        raise SystemExit(
+            f"Version mismatch inside {lock_json}: top-level={top_level_version}, packages[''].version={root_package_version}"
+        )
+
+    return top_level_version
+
+
 def read_pyproject_version(pyproject: Path) -> str:
     """Read [project].version from pyproject.toml."""
     text = pyproject.read_text(encoding="utf-8")
@@ -88,6 +105,18 @@ def update_node_version(pkg_json: Path, new_version: str) -> None:
     data = json.loads(pkg_json.read_text(encoding="utf-8"))
     data["version"] = new_version
     pkg_json.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def update_node_lock_version(lock_json: Path, new_version: str) -> None:
+    """Update top-level and root package versions in Node package-lock.json."""
+    data = json.loads(lock_json.read_text(encoding="utf-8"))
+    data["version"] = new_version
+    packages = data.setdefault("packages", {})
+    root_package = packages.setdefault("", {})
+    if not isinstance(root_package, dict):
+        raise SystemExit(f"Invalid root package entry in {lock_json}")
+    root_package["version"] = new_version
+    lock_json.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
 def update_pyproject_version(pyproject: Path, new_version: str) -> None:
@@ -382,6 +411,7 @@ def main() -> int:
     repo_root = get_repo_root()
     skill_md = repo_root / "skill" / "agnostic-prompt-standard" / "SKILL.md"
     pkg_json = repo_root / "packages" / "aps-cli-node" / "package.json"
+    lock_json = repo_root / "packages" / "aps-cli-node" / "package-lock.json"
     pyproject = repo_root / "packages" / "aps-cli-py" / "pyproject.toml"
     init_py = repo_root / "packages" / "aps-cli-py" / "src" / "aps_cli" / "__init__.py"
     platforms_dir = repo_root / "skill" / "agnostic-prompt-standard" / "platforms"
@@ -389,6 +419,7 @@ def main() -> int:
     versions = {
         "skill": read_skill_version(skill_md),
         "node": read_node_version(pkg_json),
+        "node_lock": read_node_lock_version(lock_json),
         "python": read_pyproject_version(pyproject),
         "python_module": read_python_module_version(init_py),
     }
@@ -415,12 +446,14 @@ def main() -> int:
 
     update_skill_version(skill_md, new_version)
     update_node_version(pkg_json, new_version)
+    update_node_lock_version(lock_json, new_version)
     update_pyproject_version(pyproject, new_version)
     update_python_module_version(init_py, new_version)
 
     print("Done. Updated:")
     print(f"  - {skill_md}")
     print(f"  - {pkg_json}")
+    print(f"  - {lock_json}")
     print(f"  - {pyproject}")
     print(f"  - {init_py}")
 

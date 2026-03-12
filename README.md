@@ -67,6 +67,27 @@ Validate your installation:
 npx @agnostic-prompt/aps doctor
 ```
 
+Update an existing APS installation:
+
+```bash
+npx @agnostic-prompt/aps update
+# or
+pipx run agnostic-prompt-aps update
+```
+
+Check only, without writing:
+
+```bash
+aps update --check
+```
+
+To force the newest published CLI before the refresh, run the latest package explicitly:
+
+```bash
+npx @agnostic-prompt/aps@latest update --yes
+pipx run --no-cache agnostic-prompt-aps update --yes
+```
+
 ## Skill Structure
 
 APS separates concerns into three layers:
@@ -120,6 +141,7 @@ Available on both npm and PyPI.
 ```bash
 npx @agnostic-prompt/aps init        # Install skill
 npx @agnostic-prompt/aps doctor      # Check installation
+npx @agnostic-prompt/aps update      # Refresh installed APS skills
 npx @agnostic-prompt/aps platforms   # List available adapters
 ```
 
@@ -128,6 +150,7 @@ npx @agnostic-prompt/aps platforms   # List available adapters
 ```bash
 pipx run agnostic-prompt-aps init
 pipx run agnostic-prompt-aps doctor
+pipx run agnostic-prompt-aps update
 ```
 
 > **Windows:** If `pipx run` fails with `FileNotFoundError`, use `pipx install agnostic-prompt-aps` or `python -m aps_cli` instead. See [`packages/aps-cli-py/README.md`](packages/aps-cli-py/README.md) for details.
@@ -137,11 +160,13 @@ pipx run agnostic-prompt-aps doctor
 ### Build Tools
 
 ```bash
-python tools/sync_payload.py       # Sync skill to CLI payloads
-python tools/check_versions.py     # Verify version consistency
-python tools/check_skill_links.py  # Check skill link integrity
-python tools/bump_version.py X.Y.Z # Update version across all files
-python tools/test_bump_version.py  # Run bump_version unit tests
+python tools/sync_payload.py             # Sync skill to CLI payloads
+python tools/check_versions.py           # Verify version consistency
+python tools/check_skill_links.py        # Check skill link integrity
+python tools/bump_version.py X.Y.Z       # Update version across all files
+python tools/auto_bump_version.py        # Auto-bump when releasable changes exist
+python tools/test_bump_version.py        # Run bump_version unit tests
+python tools/test_auto_bump_version.py   # Run auto_bump_version unit tests
 python tools/generate-decision-index.py  # Generate ADR decision index
 ```
 
@@ -149,7 +174,7 @@ python tools/generate-decision-index.py  # Generate ADR decision index
 
 ```bash
 # Node CLI
-node --test packages/aps-cli-node/test/*.test.js
+npm test --prefix packages/aps-cli-node
 
 # Python CLI
 cd packages/aps-cli-py && pytest -q tests
@@ -170,8 +195,17 @@ The canonical version is `framework_revision` in `SKILL.md`. All of these must m
 
 - `skill/agnostic-prompt-standard/SKILL.md`
 - `packages/aps-cli-node/package.json`
+- `packages/aps-cli-node/package-lock.json`
 - `packages/aps-cli-py/pyproject.toml`
 - `packages/aps-cli-py/src/aps_cli/__init__.py`
+
+Release automation now has three layers:
+
+- `.github/workflows/ci.yml` validates versions and runs Node + Python tests
+- `.github/workflows/auto-bump-version.yml` creates a follow-up version bump commit on `main` when releasable files changed but the version did not
+- `.github/workflows/publish-packages.yml` publishes npm and PyPI packages from `vX.Y.Z` tags after re-validating the tagged version
+
+The publish workflow is designed for trusted publishing / OIDC on npm and PyPI. Configure those repository-side credentials before you use the workflow.
 
 ### Installation Paths
 

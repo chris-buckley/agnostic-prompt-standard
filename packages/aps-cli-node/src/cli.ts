@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { runDoctor } from './commands/doctor.js';
 import { runInit } from './commands/init.js';
 import { runPlatforms } from './commands/platforms.js';
+import { runUpdate } from './commands/update.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json') as { version: string };
@@ -58,6 +59,26 @@ export async function main(argv: string[]): Promise<void> {
         process.exit(1);
       })
     );
+
+  program
+    .command('update')
+    .description('Check for APS updates and refresh installed APS skills')
+    .option('--root <path>', 'Workspace root path (defaults to git repo root if found)')
+    .option('--repo', 'Update repo-scoped APS skill installation(s) only')
+    .option('--personal', 'Update personal APS skill installation(s) only')
+    .option('--check', 'Check for available updates without writing files', false)
+    .option('--json', 'Output JSON format', false)
+    .option('--dry-run', 'Print planned actions without writing', false)
+    .option('-y, --yes', 'Non-interactive; accept self-update prompt automatically', false)
+    .option('-f, --force', 'Refresh installed skill directories even when versions already match', false)
+    .action((opts) =>
+      runUpdate(opts).catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error(`Error: ${message}`);
+        process.exit(1);
+      })
+    );
+
 
   program
     .command('version')

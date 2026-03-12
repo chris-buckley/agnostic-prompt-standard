@@ -188,6 +188,7 @@ Both CLIs expose identical commands:
 
 aps init [options]      Install APS skill into a project
 aps doctor [options]    Diagnose skill installation and environment
+aps update [options]    Refresh installed APS skills from the bundled payload
 aps platforms           List available platform adapters
 aps version             Display CLI version
 
@@ -202,16 +203,27 @@ init command options:
 doctor command options:
 - --root <path> — Workspace root path (defaults to git repo root if found)
 - --json — Output in JSON format (useful for CI)
+
+update command options:
+- --root <path> — Workspace root path (defaults to git repo root if found)
+- --repo / --personal — Refresh only repo-scoped or personal skill installs
+- --check — Report available updates without writing files
+- --dry-run — Preview the refresh plan without writing files
+- --json — Output machine-readable status
+- -f, --force — Refresh installed skill directories even when versions already match
+- -y, --yes — Auto-accept the CLI self-update prompt when a newer registry release exists
 >>
 
 BUILD_TOOLS: TEXT<<
-python tools/sync_payload.py           # Sync skill to both CLI payloads
-python tools/sync_payload.py --node    # Sync to Node payload only
-python tools/sync_payload.py --python  # Sync to Python payload only
-python tools/check_versions.py         # Verify version consistency
-python tools/check_skill_links.py      # Check skill link integrity
-python tools/bump_version.py           # Bump version across all sources
-python tools/test_bump_version.py      # Run bump_version unit tests
+python tools/sync_payload.py             # Sync skill to both CLI payloads
+python tools/sync_payload.py --node      # Sync to Node payload only
+python tools/sync_payload.py --python    # Sync to Python payload only
+python tools/check_versions.py           # Verify version consistency
+python tools/check_skill_links.py        # Check skill link integrity
+python tools/bump_version.py             # Bump version across all sources
+python tools/auto_bump_version.py        # Auto-bump when releasable files changed but version did not
+python tools/test_bump_version.py        # Run bump_version unit tests
+python tools/test_auto_bump_version.py   # Run auto_bump_version unit tests
 python tools/generate-decision-index.py  # Generate ADR decision index
 >>
 
@@ -239,9 +251,14 @@ The canonical version is `framework_revision` in `skill/agnostic-prompt-standard
 These must all match:
 - SKILL.md framework_revision
 - packages/aps-cli-node/package.json version
+- packages/aps-cli-node/package-lock.json version
 - packages/aps-cli-py/pyproject.toml [project].version
 - packages/aps-cli-py/src/aps_cli/__init__.py __version__
-CI runs check_versions.py to enforce this.
+
+GitHub Actions now enforces this with:
+- .github/workflows/ci.yml
+- .github/workflows/auto-bump-version.yml
+- .github/workflows/publish-packages.yml
 >>
 
 SKILL_INSTALL_PATHS: TEXT<<

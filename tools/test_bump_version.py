@@ -20,7 +20,9 @@ from bump_version import (
     read_skill_metadata,
     rename_agent_file,
     update_agent_frontmatter,
+    update_node_lock_version,
     update_platform_agents,
+    read_node_lock_version,
     SEMVER_RE,
 )
 
@@ -580,6 +582,60 @@ class TestSemverRegex(unittest.TestCase):
         for v in invalid:
             with self.subTest(version=v):
                 self.assertIsNone(SEMVER_RE.match(v))
+
+
+class TestNodeLockVersion(unittest.TestCase):
+    """Tests for Node package-lock version helpers."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_read_node_lock_version_reads_matching_versions(self):
+        lock_path = self.temp_path / "package-lock.json"
+        lock_path.write_text(
+            json.dumps({
+                "name": "@agnostic-prompt/aps",
+                "version": "1.2.3",
+                "packages": {"": {"version": "1.2.3"}},
+            }),
+            encoding="utf-8",
+        )
+
+        self.assertEqual(read_node_lock_version(lock_path), "1.2.3")
+
+    def test_read_node_lock_version_rejects_internal_mismatch(self):
+        lock_path = self.temp_path / "package-lock.json"
+        lock_path.write_text(
+            json.dumps({
+                "name": "@agnostic-prompt/aps",
+                "version": "1.2.3",
+                "packages": {"": {"version": "1.2.4"}},
+            }),
+            encoding="utf-8",
+        )
+
+        with self.assertRaises(SystemExit):
+            read_node_lock_version(lock_path)
+
+    def test_update_node_lock_version_updates_both_locations(self):
+        lock_path = self.temp_path / "package-lock.json"
+        lock_path.write_text(
+            json.dumps({
+                "name": "@agnostic-prompt/aps",
+                "version": "1.2.3",
+                "packages": {"": {"version": "1.2.3"}},
+            }),
+            encoding="utf-8",
+        )
+
+        update_node_lock_version(lock_path, "1.2.4")
+        data = json.loads(lock_path.read_text(encoding="utf-8"))
+        self.assertEqual(data["version"], "1.2.4")
+        self.assertEqual(data["packages"][""]["version"], "1.2.4")
 
 
 if __name__ == "__main__":
