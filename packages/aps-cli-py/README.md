@@ -12,19 +12,22 @@ Global install (recommended):
 ```bash
 pipx install agnostic-prompt-aps
 aps init
+aps update
 ```
 
 One-off run:
 
 ```bash
 pipx run agnostic-prompt-aps init
+pipx run agnostic-prompt-aps update
 ```
 
 ## Commands
 
 ```bash
-aps init [--repo|--personal] [--platform <id>] [--yes] [--force]
-aps doctor [--json]
+aps init [--repo|--personal] [--platform <id>] [--yes] [--force] [--dry-run]
+aps doctor [--root <path>] [--json]
+aps update [--root <path>] [--repo|--personal] [--check] [--dry-run] [--json] [--yes] [--force]
 aps platforms
 aps version
 ```
@@ -67,3 +70,25 @@ On Windows, `pipx run agnostic-prompt-aps` may fail with `FileNotFoundError` due
    ```bash
    python -m pip install --upgrade pipx
    ```
+
+
+## Update behavior
+
+`aps update` checks PyPI for the latest published APS CLI release and compares it with the running CLI version.
+
+- If a newer CLI release exists, the command can refresh the CLI package first and then re-run the update with the newer bundled APS payload.
+- Installed APS skill directories are then refreshed from that payload.
+- Use `--check` to report only, `--dry-run` to preview file updates, and `--force` to refresh installed skills even when versions already match.
+
+Examples:
+
+```bash
+# Refresh installed APS skills
+aps update
+
+# Check for updates without writing
+aps update --check
+
+# Run from the newest published package immediately
+pipx run --no-cache agnostic-prompt-aps update --yes
+```

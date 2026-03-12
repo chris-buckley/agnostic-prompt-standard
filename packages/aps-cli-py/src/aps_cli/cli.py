@@ -1,16 +1,67 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+import os
+import sys
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, Optional
 
-import questionary
+try:
+    import questionary
+except ModuleNotFoundError:
+    class _UnavailablePrompt:
+        def ask(self):
+            raise RuntimeError(
+                "questionary is required for interactive APS prompts. Install APS with its optional dependencies or use explicit flags / --yes."
+            )
+
+
+    class _QuestionaryChoice:
+        def __init__(self, title: str, value):
+            self.title = title
+            self.value = value
+
+
+    class _QuestionaryFallback:
+        Choice = _QuestionaryChoice
+
+        @staticmethod
+        def select(*args, **kwargs):
+            return _UnavailablePrompt()
+
+        @staticmethod
+        def checkbox(*args, **kwargs):
+            return _UnavailablePrompt()
+
+        @staticmethod
+        def text(*args, **kwargs):
+            return _UnavailablePrompt()
+
+        @staticmethod
+        def confirm(*args, **kwargs):
+            return _UnavailablePrompt()
+
+
+    questionary = _QuestionaryFallback()
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from . import __version__
+from .update import (
+    APS_SKIP_SELF_UPDATE_ENV,
+    PackageUpdateStatus,
+    SkillUpdateTarget,
+    apply_skill_updates,
+    collect_skill_targets,
+    compare_semver,
+    detect_python_runtime_mode,
+    fetch_latest_cli_version,
+    maybe_self_update,
+    read_skill_version,
+)
 from .core import (
     AdapterDetection,
     Platform,
@@ -620,6 +671,66 @@ def init(
         console.print(f"- Skill location: {dest}")
 
 
+def _render_update_report(
+    package_status: PackageUpdateStatus,
+    targets: list[SkillUpdateTarget],
+    *,
+    check: bool,
+    dry_run: bool,
+    yes: bool,
+) -> None:
+    console.print("APS Update")
+    console.print("----------")
+    console.print(f"CLI package: {package_status.package_name}")
+    console.print(f"Current CLI version: {package_status.current_version}")
+    console.print(f"Bundled skill version: {package_status.payload_version}")
+
+    if package_status.latest_version:
+        latest_summary = (
+            f"{package_status.latest_version} (newer release available)"
+            if package_status.update_available
+            else f"{package_status.latest_version} (already current)"
+        )
+        console.print(f"Latest registry version: {latest_summary}")
+    else:
+        console.print(
+            f"Latest registry version: unavailable ({package_status.registry_error or 'unknown error'})"
+        )
+
+    console.print(f"Runtime mode: {package_status.runtime_mode}")
+
+    if (
+        package_status.update_available
+        and os.environ.get(APS_SKIP_SELF_UPDATE_ENV) != "1"
+        and not yes
+        and not check
+        and not dry_run
+    ):
+        console.print("")
+        console.print("Note: The running CLI is older than the latest published release.")
+        console.print(
+            "      Re-run with pipx run --no-cache agnostic-prompt-aps update to refresh from the newest payload immediately."
+        )
+
+    console.print("")
+    console.print("Skill installations:" if (check or dry_run) else "Skill installation results:")
+
+    if not targets:
+        console.print("- (none found)")
+        return
+
+    for target in targets:
+        version_info = (
+            f"{target.installed_version} -> {target.desired_version}"
+            if target.installed_version
+            else f"target {target.desired_version}"
+        )
+        console.print(
+            f"- {target.scope}: {_fmt_path(target.path)} [{target.status}] ({version_info})",
+            markup=False,
+        )
+
+
 @app.command()
 def doctor(
     root: Optional[str] = typer.Option(
@@ -740,6 +851,132 @@ def doctor(
     for inst in installations:
         status = "✓" if inst["installed"] else "✗"
         console.print(f"- {inst['scope']}: {inst['path']} {status}")
+
+
+@app.command()
+def update(
+    root: Optional[str] = typer.Option(
+        None,
+        "--root",
+        help="Workspace root path (defaults to git repo root if found)",
+    ),
+    repo: bool = typer.Option(
+        False, "--repo", help="Update repo-scoped APS skill installation(s) only"
+    ),
+    personal: bool = typer.Option(
+        False, "--personal", help="Update personal APS skill installation(s) only"
+    ),
+    check: bool = typer.Option(
+        False, "--check", help="Check for available updates without writing files"
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON format"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print planned actions without writing"
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Non-interactive; accept self-update prompt automatically"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Refresh installed skill directories even when versions already match"
+    ),
+):
+    """Check for APS updates and refresh installed APS skills."""
+
+    payload_skill_dir = resolve_payload_skill_dir()
+    payload_version = read_skill_version(payload_skill_dir) or __version__
+    runtime_mode = detect_python_runtime_mode(Path(__file__), Path(sys.executable))
+
+    latest_version: Optional[str] = None
+    registry_error: Optional[str] = None
+
+    try:
+        latest_version = fetch_latest_cli_version()
+    except Exception as exc:  # pragma: no cover - network failures are environment-dependent
+        registry_error = str(exc)
+
+    package_status = PackageUpdateStatus(
+        package_name="agnostic-prompt-aps",
+        current_version=__version__,
+        payload_version=payload_version,
+        latest_version=latest_version,
+        update_available=bool(
+            latest_version and compare_semver(latest_version, __version__) > 0
+        ),
+        runtime_mode=runtime_mode,
+        registry_error=registry_error,
+    )
+
+    if (
+        package_status.update_available
+        and not check
+        and not dry_run
+        and not json_out
+        and os.environ.get(APS_SKIP_SELF_UPDATE_ENV) != "1"
+        and runtime_mode != "dev-local"
+    ):
+        should_self_update = yes
+
+        if not should_self_update and is_tty():
+            should_self_update = bool(
+                questionary.confirm(
+                    f"A newer APS CLI release is available ({__version__} -> {latest_version}). Update the CLI package now before refreshing installed skills?",
+                    default=True,
+                ).ask()
+            )
+
+        if should_self_update and latest_version:
+            maybe_self_update(
+                runtime_mode=runtime_mode,
+                latest_version=latest_version,
+                root=root,
+                repo=repo,
+                personal=personal,
+                check=check,
+                json_out=json_out,
+                dry_run=dry_run,
+                yes=yes,
+                force=force,
+            )
+            return
+
+    planned_targets = collect_skill_targets(
+        root=root,
+        repo=repo,
+        personal=personal,
+        desired_version=payload_version,
+    )
+
+    targets = (
+        planned_targets
+        if check or dry_run
+        else apply_skill_updates(planned_targets, payload_skill_dir, force=force)
+    )
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "package": asdict(package_status),
+                    "installations": [asdict(target) for target in targets],
+                    "mode": "check" if check else "dry-run" if dry_run else "apply",
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return
+
+    _render_update_report(
+        package_status,
+        targets,
+        check=check,
+        dry_run=dry_run,
+        yes=yes,
+    )
+
+    if not targets and not check and not dry_run:
+        console.print("")
+        console.print("Nothing to update. Run `aps init` first to install APS.")
 
 
 @app.command()

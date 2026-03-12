@@ -197,18 +197,34 @@ Run `python tools/generate_decision_index.py` to regenerate.
 : Remove `manifest.json`, `tools-registry.json`, `frontmatter/` directories, `_schemas/` directory, and per-platform `README.md` files from all platform directories.  
 : *Source:* [ADR-0009 §3](0009-adaptor-md-single-source-of-truth.md#3-delete-legacy-files)
 
-**D049** — Block Constants for Structured Data
-: Use `CSV<<` block constants for tool registries and `JSON<<` block constants for agent versioning configuration within `adaptor.md`.
+**D049** — Block Constants for Structured Data  
+: Use `CSV<<` block constants for tool registries and `JSON<<` block constants for agent versioning configuration within `adaptor.md`.  
 : *Source:* [ADR-0009 §4](0009-adaptor-md-single-source-of-truth.md#4-block-constants-for-structured-data)
 
-**D050** — Composite Asset Category
-: Introduce `assets/composites/` for reusable components that bundle both `<constants>` and `<formats>` in a single file where the format contract depends on the constants as its type vocabulary.
+**D050** — Composite Asset Category  
+: Introduce a `composites/` asset category for reusable components that bundle both `<constants>` and `<formats>` in a single file where the format contract depends on the constants as its type vocabulary.  
 : *Source:* [ADR-0010 §1](0010-composite-assets.md#1-composite-asset-category)
 
-**D051** — Self-Contained Envelope
-: Each composite is a self-contained APS envelope with `<constants>` defining the type vocabulary and `<formats>` defining the contract that references those constants.
+**D051** — Self-Contained Envelope  
+: Each composite is a self-contained APS envelope with `<constants>` defining the type vocabulary and `<formats>` defining the contract that references those constants.  
 : *Source:* [ADR-0010 §2](0010-composite-assets.md#2-self-contained-envelope)
 
-**D052** — Composite Naming Convention
-: Composites use the existing `<name>-v<semver>.example.md` naming convention established by constants and formats assets.
+**D052** — Naming Convention  
+: Composites use the existing `<name>-v<semver>.example.md` naming convention established by constants and formats assets.  
 : *Source:* [ADR-0010 §3](0010-composite-assets.md#3-naming-convention)
+
+**D053** — Expose an `update` command in both CLIs  
+: Both the Node and Python CLIs expose `aps update` with matching flags and reporting style.  
+: *Source:* [ADR-0011 §1](0011-update-command-and-release-automation.md#1-expose-an-update-command-in-both-clis)
+
+**D054** — Refresh the running CLI before refreshing skills  
+: When a newer registry release exists, `aps update` attempts to refresh the running CLI package first, then re-runs the update command with the new payload.  
+: *Source:* [ADR-0011 §2](0011-update-command-and-release-automation.md#2-refresh-the-running-cli-before-refreshing-skills)
+
+**D055** — Automate missed version bumps on `main`  
+: The repository includes `tools/auto_bump_version.py` and an `auto-bump-version.yml` workflow to create a version bump commit when releasable files changed but the canonical APS version did not.  
+: *Source:* [ADR-0011 §3](0011-update-command-and-release-automation.md#3-automate-missed-version-bumps-on-main)
+
+**D056** — Publish from version tags with trusted publishing  
+: npm and PyPI publication runs from semver tags (`vX.Y.Z`) through a dedicated GitHub Actions workflow.  
+: *Source:* [ADR-0011 §4](0011-update-command-and-release-automation.md#4-publish-from-version-tags-with-trusted-publishing)

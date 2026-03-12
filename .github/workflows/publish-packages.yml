@@ -1,0 +1,85 @@
+name: Publish APS CLI packages
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-node:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: packages/aps-cli-node/package-lock.json
+
+      - name: Verify tagged version
+        run: python tools/check_versions.py --tag "${GITHUB_REF_NAME}"
+
+      - name: Sync Node payload
+        run: python tools/sync_payload.py --node
+
+      - name: Install Node CLI dependencies
+        run: npm ci --prefix packages/aps-cli-node --ignore-scripts
+
+      - name: Run Node CLI tests
+        run: npm test --prefix packages/aps-cli-node
+
+      - name: Publish Node package to npm
+        working-directory: packages/aps-cli-node
+        run: npm publish --access public --provenance
+
+  publish-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify tagged version
+        run: python tools/check_versions.py --tag "${GITHUB_REF_NAME}"
+
+      - name: Sync Python payload
+        run: python tools/sync_payload.py --python
+
+      - name: Install Python build + test dependencies
+        run: |
+          python -m pip install --upgrade pip build
+          python -m pip install -e "packages/aps-cli-py[dev]"
+
+      - name: Run Python CLI tests
+        run: python -m pytest -q packages/aps-cli-py/tests
+
+      - name: Build Python distributions
+        run: python -m build packages/aps-cli-py
+
+      - name: Publish Python package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/aps-cli-py/dist

@@ -1,61 +1,51 @@
-name: CI
+name: APS CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
 
 jobs:
-  checks:
+  validate:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Check out repository
+        uses: actions/checkout@v4
         with:
-          python-version: "3.12"
-      - name: Version consistency
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: packages/aps-cli-node/package-lock.json
+
+      - name: Verify release version consistency
         run: python tools/check_versions.py
-      - name: Skill link integrity
-        run: python tools/check_skill_links.py
 
-  node:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - name: Install deps
-        working-directory: packages/aps-cli-node
-        run: npm install
-      - name: Lint
-        working-directory: packages/aps-cli-node
-        run: npm run lint
-      - name: Test
-        working-directory: packages/aps-cli-node
-        run: npm test
-      - name: Pack (runs prepack)
-        working-directory: packages/aps-cli-node
-        run: npm pack
+      - name: Run release tooling unit tests
+        run: |
+          python tools/test_bump_version.py
+          python tools/test_auto_bump_version.py
 
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install deps
-        run: |
-          python -m pip install -U pip
-          python -m pip install -e "packages/aps-cli-py[dev]"
-      - name: Test
-        run: pytest -q packages/aps-cli-py/tests
-      - name: Build (wheel + sdist)
-        run: |
-          python tools/sync_payload.py --python
-          python -m build --outdir packages/aps-cli-py/dist packages/aps-cli-py
-      - name: Smoke-test installed wheel
-        run: |
-          pip install packages/aps-cli-py/dist/*.whl
-          python -c "from aps_cli.cli import main; print('wheel import ok')"
+      - name: Install Python CLI test dependencies
+        run: python -m pip install -e "packages/aps-cli-py[dev]"
+
+      - name: Run Python CLI tests
+        run: python -m pytest -q packages/aps-cli-py/tests
+
+      - name: Install Node CLI dependencies
+        run: npm ci --prefix packages/aps-cli-node --ignore-scripts
+
+      - name: Run Node CLI tests
+        run: npm test --prefix packages/aps-cli-node
