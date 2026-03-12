@@ -7,12 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { confirm } from '@inquirer/prompts';
 
 import {
-  copyDir,
   defaultPersonalSkillPath,
   defaultProjectSkillPath,
+  isDirectory,
+  listFilesRecursive,
   pathExists,
   pickWorkspaceRoot,
-  removeDir,
+  replaceDirWithCopy,
   resolvePayloadSkillDir,
 } from '../core.js';
 
@@ -36,13 +37,15 @@ export interface UpdateCliOptions {
 
 export type NodeRuntimeMode = 'dev-local' | 'local-project' | 'ephemeral' | 'installed';
 
+export type SkillUpdateStatus = 'missing' | 'orphaned' | 'up-to-date' | 'update-available' | 'updated';
+
 export interface SkillUpdateTarget {
   scope: string;
   path: string;
   exists: boolean;
   installedVersion: string | null;
   desiredVersion: string;
-  status: 'missing' | 'up-to-date' | 'update-available' | 'updated';
+  status: SkillUpdateStatus;
 }
 
 interface PackageUpdateStatus {
@@ -104,9 +107,10 @@ function readFrameworkRevision(text: string): string | null {
   return m?.[1] ?? null;
 }
 
-async function readInstalledSkillVersion(skillDir: string): Promise<string | null> {
+async function readSkillMdVersion(skillDir: string): Promise<string | null> {
   const skillMd = path.join(skillDir, 'SKILL.md');
   if (!(await pathExists(skillMd))) return null;
+
   try {
     const fs = await import('node:fs/promises');
     const text = await fs.readFile(skillMd, 'utf-8');
@@ -114,6 +118,65 @@ async function readInstalledSkillVersion(skillDir: string): Promise<string | nul
   } catch {
     return null;
   }
+}
+
+function extractVersionCandidates(text: string): string[] {
+  const out = new Set<string>();
+
+  for (const pattern of [/framework_revision:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?/g, /aps-v([0-9]+\.[0-9]+\.[0-9]+)(?:\.agent)?\.md\b/g]) {
+    for (const match of text.matchAll(pattern)) {
+      const version = match[1];
+      if (version) out.add(version);
+    }
+  }
+
+  return [...out];
+}
+
+function pickHighestVersion(versions: Iterable<string>): string | null {
+  let highest: string | null = null;
+
+  for (const version of versions) {
+    if (!highest || compareSemver(version, highest) > 0) {
+      highest = version;
+    }
+  }
+
+  return highest;
+}
+
+export async function inferInstalledSkillVersion(skillDir: string): Promise<string | null> {
+  const skillMdVersion = await readSkillMdVersion(skillDir);
+  if (skillMdVersion) return skillMdVersion;
+
+  const versions = new Set<string>();
+  const platformsDir = path.join(skillDir, 'platforms');
+  if (!(await isDirectory(platformsDir))) return null;
+
+  try {
+    const fs = await import('node:fs/promises');
+    const files = await listFilesRecursive(platformsDir);
+
+    for (const filePath of files) {
+      for (const version of extractVersionCandidates(filePath)) {
+        versions.add(version);
+      }
+
+      if (path.basename(filePath) !== 'adaptor.md') continue;
+      try {
+        const text = await fs.readFile(filePath, 'utf-8');
+        for (const version of extractVersionCandidates(text)) {
+          versions.add(version);
+        }
+      } catch {
+        // Ignore unreadable adaptor files while inferring a best-effort version.
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return pickHighestVersion(versions);
 }
 
 export async function fetchLatestCliVersion(fetchImpl: typeof fetch = fetch): Promise<string> {
@@ -136,7 +199,7 @@ export async function fetchLatestCliVersion(fetchImpl: typeof fetch = fetch): Pr
   return latest;
 }
 
-async function collectSkillTargets(options: {
+export async function collectSkillTargets(options: {
   root?: string | undefined;
   repo?: boolean | undefined;
   personal?: boolean | undefined;
@@ -170,15 +233,18 @@ async function collectSkillTargets(options: {
     if (seen.has(candidate.path)) continue;
     seen.add(candidate.path);
 
-    const exists = await pathExists(path.join(candidate.path, 'SKILL.md'));
+    const exists = await pathExists(candidate.path);
     if (!explicitScope && !exists) continue;
 
-    const installedVersion = exists ? await readInstalledSkillVersion(candidate.path) : null;
-    const status: SkillUpdateTarget['status'] = !exists
+    const hasEntrypoint = exists ? await pathExists(path.join(candidate.path, 'SKILL.md')) : false;
+    const installedVersion = exists ? await inferInstalledSkillVersion(candidate.path) : null;
+    const status: SkillUpdateStatus = !exists
       ? 'missing'
-      : installedVersion === options.desiredVersion
-        ? 'up-to-date'
-        : 'update-available';
+      : !hasEntrypoint
+        ? 'orphaned'
+        : installedVersion === options.desiredVersion
+          ? 'up-to-date'
+          : 'update-available';
 
     results.push({
       scope: candidate.scope,
@@ -253,7 +319,11 @@ function maybeSelfUpdate(runtimeMode: NodeRuntimeMode, latestVersion: string, op
   runAndExit('npx', ['--yes', `${NODE_PACKAGE_NAME}@${latestVersion}`, ...forwardedArgs]);
 }
 
-async function applySkillUpdates(targets: SkillUpdateTarget[], payloadSkillDir: string, options: { force: boolean }): Promise<SkillUpdateTarget[]> {
+async function applySkillUpdates(
+  targets: SkillUpdateTarget[],
+  payloadSkillDir: string,
+  options: { force: boolean }
+): Promise<SkillUpdateTarget[]> {
   const updatedTargets: SkillUpdateTarget[] = [];
 
   for (const target of targets) {
@@ -267,8 +337,7 @@ async function applySkillUpdates(targets: SkillUpdateTarget[], payloadSkillDir: 
       continue;
     }
 
-    removeDir(target.path);
-    await copyDir(payloadSkillDir, target.path);
+    await replaceDirWithCopy(payloadSkillDir, target.path);
     updatedTargets.push({
       ...target,
       exists: true,
@@ -320,7 +389,7 @@ function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpda
 
 export async function runUpdate(options: UpdateCliOptions): Promise<void> {
   const payloadSkillDir = await resolvePayloadSkillDir();
-  const payloadVersion = (await readInstalledSkillVersion(payloadSkillDir)) ?? pkg.version;
+  const payloadVersion = (await readSkillMdVersion(payloadSkillDir)) ?? pkg.version;
   const runtimeMode = detectNodeRuntimeMode(process.argv[1] ?? fileURLToPath(import.meta.url));
 
   let latestVersion: string | null = null;

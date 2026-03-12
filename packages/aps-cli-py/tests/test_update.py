@@ -9,6 +9,7 @@ from aps_cli.update import (
     compare_semver,
     detect_python_runtime_mode,
     fetch_latest_cli_version,
+    infer_installed_skill_version,
     read_framework_revision_from_text,
 )
 
@@ -115,3 +116,42 @@ def test_collect_skill_targets_reports_missing_when_scope_is_explicit(tmp_path: 
 
     assert len(targets) == 2
     assert all(target.status == "missing" for target in targets)
+
+
+def test_infer_installed_skill_version_uses_versioned_adapter_artifacts_when_skill_md_is_missing(tmp_path: Path):
+    skill_dir = tmp_path / "skill"
+    adaptor_dir = skill_dir / "platforms" / "claude-code"
+    template_dir = skill_dir / "platforms" / "vscode-copilot" / "templates" / ".github" / "agents"
+
+    adaptor_dir.mkdir(parents=True)
+    template_dir.mkdir(parents=True)
+    (adaptor_dir / "adaptor.md").write_text(
+        'current_path: "templates/.claude/agents/aps-v1.1.16.md"\n',
+        encoding="utf-8",
+    )
+    (template_dir / "aps-v1.1.16.agent.md").write_text("# agent\n", encoding="utf-8")
+
+    assert infer_installed_skill_version(skill_dir) == "1.1.16"
+
+
+def test_collect_skill_targets_marks_orphaned_installs_when_directory_exists_without_skill_md(tmp_path: Path, monkeypatch):
+    repo_root = tmp_path / "workspace"
+    repo_skill = repo_root / ".github" / "skills" / "agnostic-prompt-standard"
+    template_dir = repo_skill / "platforms" / "vscode-copilot" / "templates" / ".github" / "agents"
+    template_dir.mkdir(parents=True)
+    (template_dir / "aps-v1.1.16.agent.md").write_text("# agent\n", encoding="utf-8")
+
+    home = tmp_path / "home"
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    targets = collect_skill_targets(
+        root=str(repo_root),
+        repo=False,
+        personal=False,
+        desired_version="1.2.0",
+    )
+
+    assert len(targets) == 1
+    assert targets[0].scope == "repo"
+    assert targets[0].status == "orphaned"
+    assert targets[0].installed_version == "1.1.16"

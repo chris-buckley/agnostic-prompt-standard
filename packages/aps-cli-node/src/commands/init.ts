@@ -5,19 +5,17 @@ import { checkbox, confirm, input, select } from '@inquirer/prompts';
 
 import {
   computeInstallFamilies,
-  copyDir,
   copyTemplateTree,
   defaultPersonalSkillPath,
   defaultProjectSkillPath,
   expandHome,
-  ensureDir,
   findRepoRoot,
   homeDir,
   isDirectory,
   listFilesRecursive,
   pathExists,
   pickWorkspaceRoot,
-  removeDir,
+  replaceDirWithCopy,
   resolvePayloadSkillDir,
 } from '../core.js';
 import {
@@ -492,19 +490,7 @@ export async function runInit(options: InitCliOptions): Promise<void> {
 
   // Execute skill copies
   for (const s of skills) {
-    const dstExists = await pathExists(s.dst);
-
-    if (dstExists) {
-      if (options.force) {
-        await removeDir(s.dst);
-      } else if (isTTY() && !options.yes) {
-        // Overwrite was confirmed in the summary prompt.
-        await removeDir(s.dst);
-      }
-    }
-
-    await ensureDir(path.dirname(s.dst));
-    await copyDir(payloadSkillDir, s.dst);
+    await replaceDirWithCopy(payloadSkillDir, s.dst);
     console.log(`Installed APS skill -> ${s.dst}`);
   }
 
