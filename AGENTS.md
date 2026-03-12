@@ -115,6 +115,7 @@ skill/
         gui-component-spec-v1.0.0.example.md GUI component vocabulary and format contract
     guides/
       skill-authoring-v1.0.0.guide.md Skill authoring reference for humans and agents
+      subagent-architecture-v1.0.0.guide.md Cross-platform coordinator and worker authoring guide
     platforms/
       claude-code/
         adaptor.md Platform adapter (single source of truth)
@@ -157,10 +158,10 @@ SKILL_FOLDERS_DESC: TEXT<<
 The `references/` folder contains the normative APS v1.0 specification documents (00-07) that define the authoritative rules for prompt structure, vocabulary, linting, agentic control, schemas, grammar, logging/privacy, and error taxonomy.
 The `assets/` folder contains reusable templates and example components organized into `constants/`, `formats/`, and `composites/` subfolders that can be used when building APS-compliant prompts. Composites bundle tightly coupled `<constants>` and `<formats>` in a single file where the format contract references the constants as its type vocabulary.
 The `processes/` folder contains executable APS process documents that encode skill-specific workflows. Each process file is a full 7-section APS document loaded by agents on demand. This is a skill capability, not a fourth APS layer.
-The `guides/` folder contains reference documents for human and agent consumption. Guides provide authoring guidance, best practices, and design patterns, and may use APS envelope format or prose markdown.
+The `guides/` folder contains reference documents for human and agent consumption. Guides provide authoring guidance, best practices, design patterns, and cross-platform coordinator/worker interface rules, and may use APS envelope format or prose markdown.
 The `_template/` folder contains a minimal skill skeleton used to scaffold new skills. It ships with the payload after `aps init` and includes a stub SKILL.md with placeholder frontmatter plus empty directories for references, assets, processes, scripts, and guides.
 The `scripts/` folder is currently empty (reserved placeholder) for future automation scripts related to skill development.
-The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability) without changing the core APS spec. The `claude-code/` adapter (used with `--platform claude-code`) is particularly important for Claude Code CLI users, alongside `opencode/` and `vscode-copilot/` adapters plus templates for creating new adapters.
+The `platforms/` folder contains non-normative platform adapters that describe platform-specific differences (file discovery, frontmatter, tool availability, subagent depth policy, and coordinator/worker wiring) without changing the core APS spec. The `claude-code/` adapter (used with `--platform claude-code`) is particularly important for Claude Code CLI users, alongside `opencode/` and `vscode-copilot/` adapters plus templates for creating new adapters.
 >>
 
 NODE_CLI_USAGE: TEXT<<
