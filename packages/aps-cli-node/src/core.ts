@@ -1,5 +1,6 @@
 // Core platform/tool detection and loading logic for APS CLI
 
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -119,10 +120,8 @@ export function inferPlatformId(workspaceRoot: string): 'vscode-copilot' | null 
  * Pick the workspace root. Uses a provided path or attempts to infer from cwd.
  */
 export async function pickWorkspaceRoot(root?: string): Promise<string | null> {
-  if (root) return root;
-  const cwd = process.cwd();
-  if (await pathExists(path.join(cwd, 'package.json'))) return cwd;
-  return null;
+  if (root) return path.resolve(expandHome(root));
+  return findRepoRoot(process.cwd());
 }
 
 /**
@@ -349,6 +348,126 @@ export async function findRepoRoot(startDir: string): Promise<string | null> {
  */
 export async function removeDir(p: string): Promise<void> {
   await fs.rm(p, { recursive: true, force: true });
+}
+
+export interface ReplaceDirWithCopyResult {
+  replacedExisting: boolean;
+  leftoverBackupPath: string | null;
+}
+
+export type ReplaceDirWithCopyErrorKind =
+  | 'stage-copy-failed'
+  | 'target-busy'
+  | 'activate-failed'
+  | 'rollback-failed';
+
+export class ReplaceDirWithCopyError extends Error {
+  readonly kind: ReplaceDirWithCopyErrorKind;
+  readonly targetPath: string;
+  readonly backupPath: string | null;
+
+  constructor(
+    kind: ReplaceDirWithCopyErrorKind,
+    targetPath: string,
+    message: string,
+    opts: { cause?: unknown; backupPath?: string | null } = {}
+  ) {
+    super(message, opts.cause !== undefined ? { cause: opts.cause } : undefined);
+    this.name = 'ReplaceDirWithCopyError';
+    this.kind = kind;
+    this.targetPath = targetPath;
+    this.backupPath = opts.backupPath ?? null;
+  }
+}
+
+async function cleanupPathIfExists(p: string): Promise<void> {
+  try {
+    await fs.rm(p, { recursive: true, force: true });
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
+
+function tempArtifactPath(dest: string, label: 'staging' | 'backup'): string {
+  const parent = path.dirname(dest);
+  const base = path.basename(dest);
+  return path.join(parent, `.${base}.aps-${label}-${process.pid}-${Date.now()}-${randomUUID()}`);
+}
+
+export async function replaceDirWithCopy(src: string, dest: string): Promise<ReplaceDirWithCopyResult> {
+  const stagingPath = tempArtifactPath(dest, 'staging');
+  const backupPath = tempArtifactPath(dest, 'backup');
+
+  await ensureDir(path.dirname(dest));
+
+  try {
+    await copyDir(src, stagingPath);
+  } catch (err) {
+    await cleanupPathIfExists(stagingPath);
+    throw new ReplaceDirWithCopyError(
+      'stage-copy-failed',
+      dest,
+      `Cannot prepare APS files for ${dest}.`,
+      { cause: err }
+    );
+  }
+
+  const hadExisting = await pathExists(dest);
+
+  if (hadExisting) {
+    try {
+      await fs.rename(dest, backupPath);
+    } catch (err) {
+      await cleanupPathIfExists(stagingPath);
+      throw new ReplaceDirWithCopyError(
+        'target-busy',
+        dest,
+        `Cannot replace APS files at ${dest}. The existing installation is busy or locked. Close any program that has files open in this skill directory, then run the command again.`,
+        { cause: err }
+      );
+    }
+  }
+
+  try {
+    await fs.rename(stagingPath, dest);
+  } catch (err) {
+    await cleanupPathIfExists(stagingPath);
+
+    if (hadExisting) {
+      try {
+        await fs.rename(backupPath, dest);
+      } catch (rollbackErr) {
+        throw new ReplaceDirWithCopyError(
+          'rollback-failed',
+          dest,
+          `Cannot activate the updated APS files at ${dest}, and the previous installation could not be restored automatically. The previous files remain at ${backupPath}.`,
+          { cause: rollbackErr, backupPath }
+        );
+      }
+    }
+
+    throw new ReplaceDirWithCopyError(
+      'activate-failed',
+      dest,
+      `Cannot activate the updated APS files at ${dest}. The previous installation was restored.`,
+      { cause: err }
+    );
+  }
+
+  let leftoverBackupPath: string | null = null;
+
+  if (hadExisting) {
+    try {
+      await fs.rm(backupPath, { recursive: true, force: true });
+    } catch {
+      leftoverBackupPath = backupPath;
+    }
+  }
+
+  return {
+    replacedExisting: hadExisting,
+    leftoverBackupPath,
+  };
 }
 
 function toPosixPath(p: string): string {

@@ -67,19 +67,17 @@ from .core import (
     Platform,
     compute_install_families,
     compute_skill_destinations,
-    copy_dir,
     copy_template_tree,
     default_personal_skill_path,
     default_project_skill_path,
     detect_adapters,
-    ensure_dir,
     find_repo_root,
     format_detection_label,
     is_tty,
     list_files_recursive,
     load_platforms,
     pick_workspace_root,
-    remove_dir,
+    replace_dir_with_copy,
     resolve_payload_skill_dir,
     sort_platforms_for_ui,
 )
@@ -636,12 +634,7 @@ def init(
             )
 
     for skill in skills:
-        if skill.exists:
-            if force or (is_tty() and not yes):
-                remove_dir(skill.dst)
-
-        ensure_dir(skill.dst.parent)
-        copy_dir(payload_skill_dir, skill.dst)
+        replace_dir_with_copy(payload_skill_dir, skill.dst)
         console.print(f"Installed APS skill -> {skill.dst}")
 
     for template in templates:

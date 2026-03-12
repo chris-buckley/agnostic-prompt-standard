@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
+from uuid import uuid4
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Optional
@@ -291,6 +293,112 @@ def ensure_dir(p: Path) -> None:
 def remove_dir(p: Path) -> None:
     """Remove a directory recursively."""
     shutil.rmtree(p, ignore_errors=True)
+
+
+ReplaceDirWithCopyErrorKind = Literal[
+    "stage-copy-failed", "target-busy", "activate-failed", "rollback-failed"
+]
+
+
+class ReplaceDirWithCopyError(Exception):
+    """Raised when APS cannot safely replace an installation directory."""
+
+    def __init__(
+        self,
+        kind: ReplaceDirWithCopyErrorKind,
+        target_path: Path,
+        message: str,
+        *,
+        backup_path: Optional[Path] = None,
+    ) -> None:
+        super().__init__(message)
+        self.kind = kind
+        self.target_path = target_path
+        self.backup_path = backup_path
+
+
+def _cleanup_path_if_exists(p: Path) -> None:
+    """Best-effort removal for temporary files or directories."""
+    if not p.exists() and not p.is_symlink():
+        return
+
+    if p.is_dir() and not p.is_symlink():
+        shutil.rmtree(p, ignore_errors=True)
+        return
+
+    try:
+        p.unlink()
+    except FileNotFoundError:
+        return
+    except IsADirectoryError:
+        shutil.rmtree(p, ignore_errors=True)
+
+
+def _temp_artifact_path(dest: Path, label: Literal["staging", "backup"]) -> Path:
+    """Return a unique sibling path for staged APS replacement artifacts."""
+    return dest.parent / f".{dest.name}.aps-{label}-{os.getpid()}-{int(time.time() * 1000)}-{uuid4()}"
+
+
+def replace_dir_with_copy(src: Path, dest: Path) -> tuple[bool, Optional[Path]]:
+    """Safely replace a destination path with a copied directory tree."""
+    staging_path = _temp_artifact_path(dest, "staging")
+    backup_path = _temp_artifact_path(dest, "backup")
+
+    ensure_dir(dest.parent)
+
+    try:
+        copy_dir(src, staging_path)
+    except Exception as exc:  # pragma: no cover - exercised through callers
+        _cleanup_path_if_exists(staging_path)
+        raise ReplaceDirWithCopyError(
+            "stage-copy-failed",
+            dest,
+            f"Cannot prepare APS files for {dest}.",
+        ) from exc
+
+    had_existing = dest.exists()
+
+    if had_existing:
+        try:
+            dest.rename(backup_path)
+        except Exception as exc:
+            _cleanup_path_if_exists(staging_path)
+            raise ReplaceDirWithCopyError(
+                "target-busy",
+                dest,
+                f"Cannot replace APS files at {dest}. The existing installation is busy or locked. Close any program that has files open in this skill directory, then run the command again.",
+            ) from exc
+
+    try:
+        staging_path.rename(dest)
+    except Exception as exc:
+        _cleanup_path_if_exists(staging_path)
+
+        if had_existing:
+            try:
+                backup_path.rename(dest)
+            except Exception as rollback_exc:  # pragma: no cover - exercised through callers
+                raise ReplaceDirWithCopyError(
+                    "rollback-failed",
+                    dest,
+                    f"Cannot activate the updated APS files at {dest}, and the previous installation could not be restored automatically. The previous files remain at {backup_path}.",
+                    backup_path=backup_path,
+                ) from rollback_exc
+
+        raise ReplaceDirWithCopyError(
+            "activate-failed",
+            dest,
+            f"Cannot activate the updated APS files at {dest}. The previous installation was restored.",
+        ) from exc
+
+    leftover_backup_path: Optional[Path] = None
+    if had_existing:
+        try:
+            _cleanup_path_if_exists(backup_path)
+        except Exception:
+            leftover_backup_path = backup_path
+
+    return had_existing, leftover_backup_path
 
 
 def copy_dir(src: Path, dst: Path) -> None:

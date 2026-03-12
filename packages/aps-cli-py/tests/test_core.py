@@ -11,6 +11,7 @@ from aps_cli.core import (
     find_repo_root,
     infer_platform_id,
     load_platforms,
+    replace_dir_with_copy,
     resolve_payload_skill_dir,
     sort_platforms_for_ui,
 )
@@ -263,3 +264,25 @@ def test_compute_install_families_generic_only_defaults_to_non_claude():
 def test_compute_install_families_generic_plus_claude_keeps_claude_only():
     """Generic adapter must not force a non-Claude install family."""
     assert compute_install_families(["generic", "claude-code"]) == (True, False)
+
+
+def test_replace_dir_with_copy_swaps_directory_contents_without_stale_files(tmp_path: Path):
+    src = tmp_path / "src"
+    dest = tmp_path / "dest"
+
+    (src / "nested").mkdir(parents=True)
+    (src / "SKILL.md").write_text('framework_revision: "1.2.0"\n', encoding="utf-8")
+    (src / "nested" / "new.txt").write_text("new\n", encoding="utf-8")
+
+    (dest / "nested").mkdir(parents=True)
+    (dest / "old.txt").write_text("old\n", encoding="utf-8")
+    (dest / "nested" / "stale.txt").write_text("stale\n", encoding="utf-8")
+
+    replaced_existing, leftover_backup = replace_dir_with_copy(src, dest)
+
+    assert replaced_existing is True
+    assert leftover_backup is None
+    assert (dest / "SKILL.md").read_text(encoding="utf-8") == 'framework_revision: "1.2.0"\n'
+    assert (dest / "nested" / "new.txt").read_text(encoding="utf-8") == "new\n"
+    assert not (dest / "old.txt").exists()
+    assert not (dest / "nested" / "stale.txt").exists()
