@@ -12,11 +12,11 @@ from typing import Callable, Literal, Optional
 from urllib.request import Request, urlopen
 
 from .core import (
-    copy_dir,
     default_personal_skill_path,
     default_project_skill_path,
+    list_files_recursive,
     pick_workspace_root,
-    remove_dir,
+    replace_dir_with_copy,
 )
 
 APS_SKIP_SELF_UPDATE_ENV = "APS_SKIP_SELF_UPDATE"
@@ -24,7 +24,7 @@ PYPI_PACKAGE_NAME = "agnostic-prompt-aps"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PYPI_PACKAGE_NAME}/json"
 
 PyRuntimeMode = Literal["dev-local", "ephemeral", "installed"]
-SkillUpdateStatus = Literal["missing", "up-to-date", "update-available", "updated"]
+SkillUpdateStatus = Literal["missing", "orphaned", "up-to-date", "update-available", "updated"]
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,58 @@ def read_skill_version(skill_dir: Path) -> Optional[str]:
     return read_framework_revision_from_text(skill_md.read_text(encoding="utf-8"))
 
 
+def _extract_version_candidates(text: str) -> list[str]:
+    out: set[str] = set()
+    for pattern in (
+        re.compile(r'framework_revision:\s*"?([0-9]+\.[0-9]+\.[0-9]+)"?'),
+        re.compile(r"aps-v([0-9]+\.[0-9]+\.[0-9]+)(?:\.agent)?\.md\b"),
+    ):
+        for match in pattern.finditer(text):
+            version = match.group(1)
+            if version:
+                out.add(version)
+    return list(out)
+
+
+def _pick_highest_version(versions: list[str]) -> Optional[str]:
+    highest: Optional[str] = None
+    for version in versions:
+        if highest is None or compare_semver(version, highest) > 0:
+            highest = version
+    return highest
+
+
+def infer_installed_skill_version(skill_dir: Path) -> Optional[str]:
+    skill_md_version = read_skill_version(skill_dir)
+    if skill_md_version:
+        return skill_md_version
+
+    platforms_dir = skill_dir / "platforms"
+    if not platforms_dir.is_dir():
+        return None
+
+    versions: set[str] = set()
+
+    try:
+        files = list_files_recursive(platforms_dir)
+    except Exception:
+        return None
+
+    for file_path in files:
+        versions.update(_extract_version_candidates(str(file_path)))
+
+        if file_path.name != "adaptor.md":
+            continue
+
+        try:
+            versions.update(_extract_version_candidates(file_path.read_text(encoding="utf-8")))
+        except Exception:
+            # Ignore unreadable adaptor files while inferring a best-effort version.
+            pass
+
+    return _pick_highest_version(list(versions))
+
+
 def fetch_latest_cli_version(
     urlopen_func: Callable[..., object] = urlopen,
 ) -> str:
@@ -134,13 +186,17 @@ def collect_skill_targets(
             continue
         seen.add(target_path)
 
-        exists = (target_path / "SKILL.md").exists()
+        exists = target_path.exists()
         if not explicit_scope and not exists:
             continue
 
-        installed_version = read_skill_version(target_path) if exists else None
+        has_entrypoint = exists and (target_path / "SKILL.md").exists()
+        installed_version = infer_installed_skill_version(target_path) if exists else None
+
         if not exists:
             status: SkillUpdateStatus = "missing"
+        elif not has_entrypoint:
+            status = "orphaned"
         elif installed_version == desired_version:
             status = "up-to-date"
         else:
@@ -174,8 +230,7 @@ def apply_skill_updates(
             updated_targets.append(target)
             continue
 
-        remove_dir(target.path)
-        copy_dir(payload_skill_dir, target.path)
+        replace_dir_with_copy(payload_skill_dir, target.path)
         updated_targets.append(
             SkillUpdateTarget(
                 scope=target.scope,

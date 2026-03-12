@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 import {
+  collectSkillTargets,
   compareSemver,
   detectNodeRuntimeMode,
   fetchLatestCliVersion,
+  inferInstalledSkillVersion,
 } from '../../dist/commands/update.js';
 
 test('compareSemver orders semver versions correctly', () => {
@@ -52,4 +57,47 @@ test('fetchLatestCliVersion rejects invalid dist-tag responses', async () => {
     }) as Response),
     /valid latest dist-tag/
   );
+});
+
+
+async function tempDir(): Promise<string> {
+  return fs.mkdtemp(path.join(os.tmpdir(), 'aps-cli-node-update-'));
+}
+
+test('inferInstalledSkillVersion uses versioned adapter artifacts when SKILL.md is missing', async () => {
+  const skillDir = await tempDir();
+  const adaptorDir = path.join(skillDir, 'platforms', 'claude-code');
+  const templateDir = path.join(skillDir, 'platforms', 'vscode-copilot', 'templates', '.github', 'agents');
+
+  await fs.mkdir(adaptorDir, { recursive: true });
+  await fs.mkdir(templateDir, { recursive: true });
+  await fs.writeFile(
+    path.join(adaptorDir, 'adaptor.md'),
+    'current_path: "templates/.claude/agents/aps-v1.1.16.md"\n',
+  );
+  await fs.writeFile(path.join(templateDir, 'aps-v1.1.16.agent.md'), '# agent\n');
+
+  const version = await inferInstalledSkillVersion(skillDir);
+  assert.equal(version, '1.1.16');
+});
+
+test('collectSkillTargets includes orphaned installs when the directory exists without SKILL.md', async () => {
+  const workspaceRoot = await tempDir();
+  const skillDir = path.join(workspaceRoot, '.github', 'skills', 'agnostic-prompt-standard');
+  const templateDir = path.join(skillDir, 'platforms', 'vscode-copilot', 'templates', '.github', 'agents');
+
+  await fs.mkdir(templateDir, { recursive: true });
+  await fs.writeFile(path.join(templateDir, 'aps-v1.1.16.agent.md'), '# agent\n');
+
+  const targets = await collectSkillTargets({
+    root: workspaceRoot,
+    repo: true,
+    personal: false,
+    desiredVersion: '1.2.0',
+  });
+
+  const orphaned = targets.filter(t => t.status === 'orphaned');
+  assert.equal(orphaned.length, 1);
+  assert.equal(orphaned[0]?.scope, 'repo');
+  assert.equal(orphaned[0]?.installedVersion, '1.1.16');
 });
