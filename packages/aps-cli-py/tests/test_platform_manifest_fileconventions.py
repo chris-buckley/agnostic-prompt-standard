@@ -68,3 +68,22 @@ def test_agent_versioning_is_valid_json_when_present():
         assert isinstance(av, dict), f"AGENT_VERSIONING must be an object in {platform.name}"
         templates = av.get("templates")
         assert isinstance(templates, list), f"AGENT_VERSIONING.templates must be a list in {platform.name}"
+
+def test_subagent_authoring_guide_is_present():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        guide = data.constants.get("SUBAGENT_AUTHORING_GUIDE")
+        assert isinstance(guide, str) and guide.strip(), f"Missing SUBAGENT_AUTHORING_GUIDE in {platform.name}"
+
+
+def test_subagent_architecture_is_valid_json_object():
+    if not PLATFORMS_DIR.exists():
+        return
+
+    for platform in _platform_dirs():
+        data = parse_adaptor_md(platform / "adaptor.md")
+        arch = data.constants.get("SUBAGENT_ARCHITECTURE")
+        assert isinstance(arch, dict), f"SUBAGENT_ARCHITECTURE must be an object in {platform.name}"

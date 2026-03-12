@@ -69,3 +69,30 @@ test('AGENT_VERSIONING parses as JSON when present', async () => {
     assert.ok(Array.isArray(templates), `platforms/${dirName} AGENT_VERSIONING.templates is not an array`);
   }
 });
+
+test('each platform adaptor defines SUBAGENT_AUTHORING_GUIDE when subagent guidance is supported', async () => {
+  if (!(await pathExists(PLATFORMS_DIR))) return;
+
+  const dirs = await listPlatformDirs();
+  for (const dirName of dirs) {
+    const adaptorPath = path.join(PLATFORMS_DIR, dirName, 'adaptor.md');
+    const raw = await fs.readFile(adaptorPath, 'utf8');
+    const data = parseAdaptorMdString(raw);
+
+    assert.ok(getString(data.constants, 'SUBAGENT_AUTHORING_GUIDE', '').trim(), `platforms/${dirName} missing SUBAGENT_AUTHORING_GUIDE`);
+  }
+});
+
+test('SUBAGENT_ARCHITECTURE parses as an object when present', async () => {
+  if (!(await pathExists(PLATFORMS_DIR))) return;
+
+  const dirs = await listPlatformDirs();
+  for (const dirName of dirs) {
+    const adaptorPath = path.join(PLATFORMS_DIR, dirName, 'adaptor.md');
+    const raw = await fs.readFile(adaptorPath, 'utf8');
+    const data = parseAdaptorMdString(raw);
+
+    const v = data.constants['SUBAGENT_ARCHITECTURE'];
+    assert.ok(typeof v === 'object' && v !== null && !Array.isArray(v), `platforms/${dirName} SUBAGENT_ARCHITECTURE is not an object`);
+  }
+});
