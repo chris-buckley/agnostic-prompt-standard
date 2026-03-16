@@ -117,7 +117,7 @@ AGENT_VERSIONING: JSON<<
   "templates": [
     {
       "path": "templates/.claude/agents/aps-v{major}.{minor}.{patch}.md",
-      "current_path": "templates/.claude/agents/aps-v1.1.17.md",
+      "current_path": "templates/.claude/agents/aps-v1.2.1.md",
       "frontmatter": {
         "name_pattern": "aps-v{major}-{minor}-{patch}",
         "description_pattern": "Generate APS v{major}.{minor}.{patch} agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint."
