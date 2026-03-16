@@ -49,9 +49,15 @@ For the full motivation, use cases, concrete examples, and design rationale, rea
 
 Install the APS skill into your repo:
 
+For Node
+
 ```bash
 npx @agnostic-prompt/aps init
-# or
+```
+
+or for Python:
+
+```bash
 pipx run agnostic-prompt-aps init
 ```
 
