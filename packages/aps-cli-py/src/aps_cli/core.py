@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import time
 from uuid import uuid4
@@ -16,6 +17,10 @@ DEFAULT_ADAPTER_ORDER: tuple[str, ...] = ("vscode-copilot", "claude-code", "open
 
 KnownAdapterId = Literal["vscode-copilot", "claude-code", "opencode", "generic"]
 
+LEGACY_AGENT_NAMES = [
+    "aps-prompt-protocol.agent.md",
+    "aps-agent-protocol.md"
+]
 
 @dataclass(frozen=True)
 class DetectionMarker:
@@ -438,3 +443,139 @@ def copy_template_tree(
         shutil.copy2(src_file, dst_file)
         copied.append(rel_str)
     return copied
+
+def get_active_platforms_for_template_root(
+    template_root: Path, payload_skill_dir: Path
+) -> list[str]:
+    active: list[str] = []
+    platforms_dir = payload_skill_dir / "platforms"
+    if not platforms_dir.is_dir():
+        return active
+        
+    for entry in platforms_dir.iterdir():
+        if not entry.is_dir() or entry.name.startswith("_"):
+            continue
+            
+        platform_id = entry.name
+        adaptor_path = platforms_dir / platform_id / "adaptor.md"
+        if not adaptor_path.exists():
+            continue
+            
+        is_active = False
+        try:
+            from .parsers.adaptor import parse_adaptor_md_string
+            raw = adaptor_path.read_text(encoding="utf-8")
+            data = parse_adaptor_md_string(raw)
+            versioning = data.constants.get("AGENT_VERSIONING")
+            if isinstance(versioning, dict) and isinstance(versioning.get("templates"), list):
+                for tpl in versioning["templates"]:
+                    path_pattern = tpl.get("path")
+                    if not path_pattern:
+                        continue
+                    if str(path_pattern).startswith("templates/"):
+                        path_pattern = path_pattern[10:]
+                        
+                    dir_name = str(Path(path_pattern).parent).replace("\\", "/")
+                    if dir_name == ".":
+                        dir_name = ""
+                    file_name_pattern = Path(path_pattern).name
+                    
+                    target_dir = template_root / dir_name if dir_name else template_root
+                    if target_dir.is_dir():
+                        regex_str = file_name_pattern.replace(".", "\\.")
+                        regex_str = re.sub(r"\{[a-z]+\}", r"\\d+", regex_str)
+                        regex = re.compile(f"^{regex_str}$")
+                        
+                        for f in target_dir.iterdir():
+                            if f.is_file() and (regex.match(f.name) or f.name in LEGACY_AGENT_NAMES):
+                                is_active = True
+                                break
+                    
+                    current_path = tpl.get("current_path") or tpl.get("currentPath")
+                    if not is_active and current_path:
+                        if str(current_path).startswith("templates/"):
+                            current_path = current_path[10:]
+                        if (template_root / current_path).exists():
+                            is_active = True
+                            
+                    if is_active:
+                        break
+        except Exception:
+            pass
+            
+        if not is_active:
+            templates_dir = platforms_dir / platform_id / "templates"
+            if templates_dir.is_dir():
+                try:
+                    all_files = list_files_recursive(templates_dir)
+                    for src in all_files:
+                        rel_path = str(src.relative_to(templates_dir)).replace("\\", "/")
+                        if (template_root / rel_path).exists():
+                            is_active = True
+                            break
+                except Exception:
+                    pass
+                    
+        if is_active:
+            active.append(platform_id)
+            
+    return active
+
+def clean_old_platform_templates(
+    template_root: Path, platform_id: str, payload_skill_dir: Path
+) -> list[str]:
+    removed: list[str] = []
+    adaptor_path = payload_skill_dir / "platforms" / platform_id / "adaptor.md"
+    if not adaptor_path.exists():
+        return removed
+        
+    try:
+        from .parsers.adaptor import parse_adaptor_md_string
+        raw = adaptor_path.read_text(encoding="utf-8")
+        data = parse_adaptor_md_string(raw)
+        versioning = data.constants.get("AGENT_VERSIONING")
+        if not isinstance(versioning, dict) or not isinstance(versioning.get("templates"), list):
+            return removed
+            
+        for tpl in versioning["templates"]:
+            path_pattern = tpl.get("path")
+            current_path = tpl.get("current_path") or tpl.get("currentPath")
+            if not path_pattern or not current_path:
+                continue
+                
+            if str(path_pattern).startswith("templates/"):
+                path_pattern = path_pattern[10:]
+            if str(current_path).startswith("templates/"):
+                current_path = current_path[10:]
+                
+            dir_name = str(Path(path_pattern).parent).replace("\\", "/")
+            if dir_name == ".":
+                dir_name = ""
+            file_name_pattern = Path(path_pattern).name
+            current_file_name = Path(current_path).name
+            
+            regex_str = file_name_pattern.replace(".", "\\.")
+            regex_str = re.sub(r"\{[a-z]+\}", r"\\d+", regex_str)
+            regex = re.compile(f"^{regex_str}$")
+            
+            target_dir = template_root / dir_name if dir_name else template_root
+            if not target_dir.is_dir():
+                continue
+                
+            for f in target_dir.iterdir():
+                if not f.is_file():
+                    continue
+                    
+                is_legacy = f.name in LEGACY_AGENT_NAMES
+                is_old_version = regex.match(f.name) and f.name != current_file_name
+                
+                if is_legacy or is_old_version:
+                    try:
+                        f.unlink()
+                        removed.append(str(f.relative_to(template_root)).replace("\\", "/"))
+                    except OSError:
+                        pass
+    except Exception:
+        pass
+        
+    return removed
