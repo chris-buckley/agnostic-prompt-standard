@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   auto-bump:
@@ -31,6 +32,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Auto bump APS version when releasable changes exist
+        id: bump
         env:
           BEFORE_SHA: ${{ github.event.before }}
         run: |
@@ -39,4 +41,32 @@ jobs:
           if [ -n "${BEFORE_SHA:-}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
             EXTRA+=(--base-ref "$BEFORE_SHA")
           fi
-          python tools/auto_bump_version.py "${EXTRA[@]}" --apply --commit --push
+          python tools/auto_bump_version.py "${EXTRA[@]}" --apply --commit
+
+      - name: Check if bump commit was created
+        id: check
+        run: |
+          if git diff --quiet HEAD origin/main; then
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(python -c "
+          import re, pathlib
+          text = pathlib.Path('skill/agnostic-prompt-standard/SKILL.md').read_text()
+          print(re.search(r'framework_revision:\s*\"?([0-9]+\.[0-9]+\.[0-9]+)', text).group(1))
+          ")
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.check.outputs.bumped == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/auto-bump-${{ steps.check.outputs.version }}
+          title: "chore: bump version to ${{ steps.check.outputs.version }}"
+          body: |
+            Automated version bump to ${{ steps.check.outputs.version }}.
+
+            Created by the auto-bump workflow after releasable changes landed on main.
+          labels: chore
+          delete-branch: true
