@@ -535,9 +535,25 @@ function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpda
   if (targets.length === 0) {
     console.log('- (none found)');
   } else {
+    const statusLabels: Record<string, string> = {
+      'updated': 'Refreshed',
+      'up-to-date': 'Up to date',
+      'update-available': 'Update available',
+      'missing': 'Not found',
+      'orphaned': 'Orphaned',
+    };
+
     for (const target of targets) {
-      const versionInfo = target.installedVersion ? `${target.installedVersion} -> ${target.desiredVersion}` : `target ${target.desiredVersion}`;
-      console.log(`- ${target.scope}: ${fmtPath(target.path)} [${target.status}] (${versionInfo})`);
+      const label = statusLabels[target.status] ?? target.status;
+      let versionInfo: string;
+      if (!target.installedVersion) {
+        versionInfo = `target ${target.desiredVersion}`;
+      } else if (target.installedVersion === target.desiredVersion) {
+        versionInfo = `reinstalled v${target.desiredVersion}`;
+      } else {
+        versionInfo = `${target.installedVersion} -> ${target.desiredVersion}`;
+      }
+      console.log(`- ${target.scope}: ${label} ${fmtPath(target.path)} (${versionInfo})`);
     }
   }
 
@@ -545,10 +561,24 @@ function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpda
     console.log('');
     console.log(options.check || options.dryRun ? 'Platform template updates:' : 'Platform template results:');
     for (const target of templateTargets) {
-      const summary = target.status === 'updated' 
-        ? `(${target.removed.length} old removed, ${target.copied.length} new written)`
-        : `(${target.status})`;
-      console.log(`- ${target.scope} templates (${target.platformId}): ${fmtPath(target.templateRoot)} ${summary}`);
+      if (target.status === 'updated' && (target.removed.length > 0 || target.copied.length > 0)) {
+        console.log(`  ${target.platformId} (${target.scope}):`);
+        if (target.removed.length > 0) {
+          console.log(`    Removed ${target.removed.length} old file(s):`);
+          for (const file of target.removed) {
+            console.log(`      - ${file}`);
+          }
+        }
+        if (target.copied.length > 0) {
+          console.log(`    Added ${target.copied.length} new file(s):`);
+          for (const file of target.copied) {
+            console.log(`      - ${file}`);
+          }
+        }
+      } else {
+        const statusLabel = target.status === 'up-to-date' ? 'up to date' : target.status;
+        console.log(`  - ${target.platformId} (${target.scope}): ${statusLabel}`);
+      }
     }
   }
 
