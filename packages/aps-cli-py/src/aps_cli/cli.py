@@ -54,8 +54,11 @@ from .update import (
     APS_SKIP_SELF_UPDATE_ENV,
     PackageUpdateStatus,
     SkillUpdateTarget,
+    TemplateUpdateTarget,
     apply_skill_updates,
     collect_skill_targets,
+    collect_template_targets,
+    apply_template_updates,
     compare_semver,
     detect_python_runtime_mode,
     fetch_latest_cli_version,
@@ -65,6 +68,7 @@ from .update import (
 from .core import (
     AdapterDetection,
     Platform,
+    clean_old_platform_templates,
     compute_install_families,
     compute_skill_destinations,
     copy_template_tree,
@@ -99,11 +103,9 @@ def _root(
     """Root command for the APS CLI."""
 
     if version:
-        # Match Node: `aps --version` prints version and exits.
         typer.echo(__version__)
         raise typer.Exit()
 
-    # Match Node: invoking `aps` with no subcommand prints help and exits with code 2.
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help(), err=True)
         raise typer.Exit(code=2)
@@ -114,7 +116,6 @@ ToolIntent = Literal["native", "mcp", "mixed", "agnostic"]
 
 
 def _normalize_platform_args(platforms: Optional[list[str]]) -> Optional[list[str]]:
-    """Normalize platform arguments, handling 'none' and comma-separated values."""
     if not platforms:
         return None
 
@@ -135,7 +136,6 @@ def _normalize_platform_args(platforms: Optional[list[str]]) -> Optional[list[st
 
 
 def _fmt_path(p: Path) -> str:
-    """Format path for display, replacing home with ~."""
     home = str(Path.home())
     s = str(p)
     if s.startswith(home):
@@ -148,14 +148,12 @@ def _select_all_choice_label() -> str:
 
 
 def _platform_display_name(platform: Platform) -> str:
-    """Get display name for platform in UI."""
     return f"{platform.display_name} ({platform.platform_id})"
 
 
 def _detection_for(
     platform_id: str, detections: dict[str, AdapterDetection]
 ) -> Optional[AdapterDetection]:
-    """Get detection result for a platform ID."""
     return detections.get(platform_id)
 
 
@@ -193,7 +191,6 @@ class InitPlan:
 
 
 def _default_tool_intent(detections: dict[str, AdapterDetection]) -> ToolIntent:
-    """Return the default tool intent for interactive init."""
     return "native" if any(d.detected for d in detections.values()) else "agnostic"
 
 
@@ -202,7 +199,6 @@ def _default_selected_platforms_for_tool_intent(
     detections: dict[str, AdapterDetection],
     tool_intent: ToolIntent,
 ) -> list[str]:
-    """Return the default adapter selection for a tool intent."""
     detected_concrete = [
         platform_id
         for platform_id in available_platform_ids
@@ -221,7 +217,6 @@ def _default_selected_platforms_for_tool_intent(
 
 
 def _format_tool_intent(tool_intent: ToolIntent) -> str:
-    """Render a tool intent for human-readable output."""
     labels = {
         "native": "native host tools",
         "mcp": "external MCP tools",
@@ -232,12 +227,10 @@ def _format_tool_intent(tool_intent: ToolIntent) -> str:
 
 
 def _normalize_declared_path(path_str: str) -> str:
-    """Remove a leading ./ from a declared path."""
     return path_str[2:] if path_str.startswith("./") else path_str
 
 
 def _declared_path_scope(path_str: str) -> Literal["workspace", "user", "absolute"]:
-    """Classify a declared MCP config path."""
     if path_str == "~" or path_str.startswith("~/") or path_str.startswith("~\\"):
         return "user"
     if Path(path_str).is_absolute():
@@ -248,7 +241,6 @@ def _declared_path_scope(path_str: str) -> Literal["workspace", "user", "absolut
 def _build_mcp_validation(
     workspace_root: Optional[Path], platforms: list[Platform]
 ) -> dict:
-    """Build MCP path validation results for doctor output."""
     checks: list[dict] = []
 
     for platform in platforms:
@@ -299,7 +291,6 @@ def _plan_platform_templates(
     selected_platforms: list[str],
     force: bool,
 ) -> list[PlannedPlatformTemplates]:
-    """Plan template files to be copied for selected platforms."""
     template_root = Path.home() if scope == "personal" else workspace_root
     if not template_root:
         return []
@@ -348,7 +339,6 @@ def _plan_platform_templates(
 
 
 def _render_plan(plan: InitPlan, force: bool) -> str:
-    """Render plan as human-readable text."""
     lines: list[str] = []
 
     if plan.tool_intent is not None:
@@ -398,7 +388,6 @@ def _render_plan(plan: InitPlan, force: bool) -> str:
 
 
 def _render_empty_platform_warning() -> str:
-    """Return warning message for empty platform selection."""
     return (
         "Note: No platform adapters selected. Only the APS skill will be installed.\n"
         "      Templates will not be copied. Use --platform <id> to include platform templates."
@@ -638,11 +627,14 @@ def init(
         console.print(f"Installed APS skill -> {skill.dst}")
 
     for template in templates:
-
         def filter_fn(rel_path: str) -> bool:
             if install_scope == "personal" and rel_path.startswith(".github"):
                 return False
             return True
+
+        removed = clean_old_platform_templates(template.template_root, template.platform_id, payload_skill_dir)
+        if removed:
+            console.print(f"Cleaned up {len(removed)} old template file(s) for {template.platform_id}")
 
         copied = copy_template_tree(
             template.templates_dir,
@@ -667,6 +659,7 @@ def init(
 def _render_update_report(
     package_status: PackageUpdateStatus,
     targets: list[SkillUpdateTarget],
+    template_targets: list[TemplateUpdateTarget],
     *,
     check: bool,
     dry_run: bool,
@@ -708,20 +701,33 @@ def _render_update_report(
     console.print("")
     console.print("Skill installations:" if (check or dry_run) else "Skill installation results:")
 
-    if not targets:
+    if not targets and not template_targets:
         console.print("- (none found)")
-        return
+    elif targets:
+        for target in targets:
+            version_info = (
+                f"{target.installed_version} -> {target.desired_version}"
+                if target.installed_version
+                else f"target {target.desired_version}"
+            )
+            console.print(
+                f"- {target.scope}: {_fmt_path(target.path)} [{target.status}] ({version_info})",
+                markup=False,
+            )
 
-    for target in targets:
-        version_info = (
-            f"{target.installed_version} -> {target.desired_version}"
-            if target.installed_version
-            else f"target {target.desired_version}"
-        )
-        console.print(
-            f"- {target.scope}: {_fmt_path(target.path)} [{target.status}] ({version_info})",
-            markup=False,
-        )
+    if template_targets:
+        console.print("")
+        console.print("Platform template updates:" if (check or dry_run) else "Platform template results:")
+        for target in template_targets:
+            summary = (
+                f"({len(target.removed)} old removed, {len(target.copied)} new written)"
+                if target.status == "updated"
+                else f"({target.status})"
+            )
+            console.print(
+                f"- {target.scope} templates ({target.platform_id}): {_fmt_path(target.template_root)} {summary}",
+                markup=False,
+            )
 
 
 @app.command()
@@ -884,7 +890,7 @@ def update(
 
     try:
         latest_version = fetch_latest_cli_version()
-    except Exception as exc:  # pragma: no cover - network failures are environment-dependent
+    except Exception as exc:
         registry_error = str(exc)
 
     package_status = PackageUpdateStatus(
@@ -939,22 +945,43 @@ def update(
         desired_version=payload_version,
     )
 
+    planned_template_targets = collect_template_targets(
+        root=root,
+        repo=repo,
+        personal=personal,
+        payload_skill_dir=payload_skill_dir,
+    )
+
     targets = (
         planned_targets
         if check or dry_run
         else apply_skill_updates(planned_targets, payload_skill_dir, force=force)
     )
 
+    template_targets = (
+        planned_template_targets
+        if check or dry_run
+        else apply_template_updates(planned_template_targets, payload_skill_dir, force=force)
+    )
+
     if json_out:
+        import dataclasses
+        class PathEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, Path):
+                    return str(obj)
+                return super().default(obj)
+
         typer.echo(
             json.dumps(
                 {
-                    "package": asdict(package_status),
-                    "installations": [asdict(target) for target in targets],
+                    "package": dataclasses.asdict(package_status),
+                    "installations": [dataclasses.asdict(target) for target in targets],
+                    "templates": [dataclasses.asdict(t) for t in template_targets],
                     "mode": "check" if check else "dry-run" if dry_run else "apply",
                 },
                 indent=2,
-                default=str,
+                cls=PathEncoder
             )
         )
         return
@@ -962,12 +989,13 @@ def update(
     _render_update_report(
         package_status,
         targets,
+        template_targets,
         check=check,
         dry_run=dry_run,
         yes=yes,
     )
 
-    if not targets and not check and not dry_run:
+    if not targets and not template_targets and not check and not dry_run:
         console.print("")
         console.print("Nothing to update. Run `aps init` first to install APS.")
 

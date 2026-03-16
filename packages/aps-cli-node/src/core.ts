@@ -7,10 +7,15 @@ import os from 'node:os';
 import { existsSync, type Dirent } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { parseAdaptorMd, getString, getStringArray } from './parsers/adaptor.js';
+import { parseAdaptorMd, parseAdaptorMdString, getString, getStringArray } from './parsers/adaptor.js';
 
 export const APS_PAYLOAD_SKILL_DIR = 'skill/agnostic-prompt-standard';
 export const SKILL_ID = 'agnostic-prompt-standard' as const;
+
+export const LEGACY_AGENT_NAMES = [
+  'aps-prompt-protocol.agent.md',
+  'aps-agent-protocol.md',
+];
 
 /**
  * Determine if a path exists.
@@ -470,7 +475,7 @@ export async function replaceDirWithCopy(src: string, dest: string): Promise<Rep
   };
 }
 
-function toPosixPath(p: string): string {
+export function toPosixPath(p: string): string {
   return p.split(path.sep).join('/');
 }
 
@@ -509,4 +514,167 @@ export async function copyTemplateTree(
   }
 
   return copied;
+}
+
+/**
+ * Detect which platforms have active template installations under a given root.
+ */
+export async function getActivePlatformsForTemplateRoot(
+  templateRoot: string,
+  payloadSkillDir: string
+): Promise<string[]> {
+  const active: string[] = [];
+  const platformsDir = path.join(payloadSkillDir, 'platforms');
+  if (!(await isDirectory(platformsDir))) return active;
+
+  let entries: Dirent[];
+  try {
+    entries = await fs.readdir(platformsDir, { withFileTypes: true });
+  } catch {
+    return active;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('_')) continue;
+
+    const platformId = entry.name;
+    const adaptorPath = path.join(platformsDir, platformId, 'adaptor.md');
+    if (!(await pathExists(adaptorPath))) continue;
+
+    let isActive = false;
+
+    try {
+      const raw = await fs.readFile(adaptorPath, 'utf-8');
+      const data = parseAdaptorMdString(raw);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const versioning = data.constants['AGENT_VERSIONING'] as any;
+      if (versioning && Array.isArray(versioning.templates)) {
+        for (const tmpl of versioning.templates) {
+          let pathPattern = tmpl.path as string;
+          if (!pathPattern) continue;
+
+          if (pathPattern.startsWith('templates/')) pathPattern = pathPattern.slice(10);
+
+          const dirName = path.dirname(pathPattern);
+          const fileNamePattern = path.basename(pathPattern);
+
+          const targetDir = path.join(templateRoot, dirName);
+          if (await pathExists(targetDir)) {
+            let regexStr = fileNamePattern.replace(/\./g, '\\.');
+            regexStr = regexStr.replace(/\{[a-z]+\}/g, '\\d+');
+            const regex = new RegExp(`^${regexStr}$`);
+
+            const dirEntries = await fs.readdir(targetDir, { withFileTypes: true });
+            for (const f of dirEntries) {
+              if (!f.isFile()) continue;
+              if (regex.test(f.name) || LEGACY_AGENT_NAMES.includes(f.name)) {
+                isActive = true;
+                break;
+              }
+            }
+          }
+
+          if (!isActive) {
+            const currentPath = (tmpl.current_path || tmpl.currentPath) as string;
+            if (currentPath) {
+              const resolved = currentPath.startsWith('templates/')
+                ? currentPath.slice(10)
+                : currentPath;
+              if (await pathExists(path.join(templateRoot, resolved))) {
+                isActive = true;
+              }
+            }
+          }
+
+          if (isActive) break;
+        }
+      }
+    } catch {
+      // Ignore parse errors during detection.
+    }
+
+    if (!isActive) {
+      const templatesDir = path.join(platformsDir, platformId, 'templates');
+      if (await isDirectory(templatesDir)) {
+        try {
+          const allFiles = await listFilesRecursive(templatesDir);
+          for (const src of allFiles) {
+            const relPath = toPosixPath(path.relative(templatesDir, src));
+            if (await pathExists(path.join(templateRoot, relPath))) {
+              isActive = true;
+              break;
+            }
+          }
+        } catch {
+          // Ignore errors during fallback detection.
+        }
+      }
+    }
+
+    if (isActive) active.push(platformId);
+  }
+
+  return active;
+}
+
+/**
+ * Remove old versioned and legacy platform template files from a template root.
+ */
+export async function cleanOldPlatformTemplates(
+  templateRoot: string,
+  platformId: string,
+  payloadSkillDir: string
+): Promise<string[]> {
+  const removed: string[] = [];
+  const adaptorPath = path.join(payloadSkillDir, 'platforms', platformId, 'adaptor.md');
+  if (!(await pathExists(adaptorPath))) return removed;
+
+  try {
+    const raw = await fs.readFile(adaptorPath, 'utf-8');
+    const data = parseAdaptorMdString(raw);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const versioning = data.constants['AGENT_VERSIONING'] as any;
+    if (!versioning || !Array.isArray(versioning.templates)) return removed;
+
+    for (const tmpl of versioning.templates) {
+      let pathPattern = tmpl.path as string;
+      let currentPath = (tmpl.current_path || tmpl.currentPath) as string;
+      if (!pathPattern || !currentPath) continue;
+
+      if (pathPattern.startsWith('templates/')) pathPattern = pathPattern.slice(10);
+      if (currentPath.startsWith('templates/')) currentPath = currentPath.slice(10);
+
+      const dirName = path.dirname(pathPattern);
+      const fileNamePattern = path.basename(pathPattern);
+      const currentFileName = path.basename(currentPath);
+
+      let regexStr = fileNamePattern.replace(/\./g, '\\.');
+      regexStr = regexStr.replace(/\{[a-z]+\}/g, '\\d+');
+      const regex = new RegExp(`^${regexStr}$`);
+
+      const targetDir = path.join(templateRoot, dirName);
+      if (!(await isDirectory(targetDir))) continue;
+
+      const entries = await fs.readdir(targetDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+
+        const isLegacy = LEGACY_AGENT_NAMES.includes(entry.name);
+        const isOldVersion = regex.test(entry.name) && entry.name !== currentFileName;
+
+        if (isLegacy || isOldVersion) {
+          try {
+            await fs.unlink(path.join(targetDir, entry.name));
+            removed.push(toPosixPath(path.relative(templateRoot, path.join(targetDir, entry.name))));
+          } catch {
+            // Best-effort removal.
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore parse errors during cleanup.
+  }
+
+  return removed;
 }

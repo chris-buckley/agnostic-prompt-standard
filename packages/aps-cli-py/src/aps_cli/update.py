@@ -17,6 +17,10 @@ from .core import (
     list_files_recursive,
     pick_workspace_root,
     replace_dir_with_copy,
+    copy_template_tree,
+    get_active_platforms_for_template_root,
+    clean_old_platform_templates,
+    LEGACY_AGENT_NAMES,
 )
 
 APS_SKIP_SELF_UPDATE_ENV = "APS_SKIP_SELF_UPDATE"
@@ -46,6 +50,17 @@ class PackageUpdateStatus:
     update_available: bool
     runtime_mode: PyRuntimeMode
     registry_error: Optional[str]
+
+
+@dataclass(frozen=True)
+class TemplateUpdateTarget:
+    scope: str
+    platform_id: str
+    template_root: Path
+    templates_dir: Path
+    status: SkillUpdateStatus
+    removed: list[str]
+    copied: list[str]
 
 
 def parse_semver(value: str) -> Optional[tuple[int, int, int]]:
@@ -216,6 +231,105 @@ def collect_skill_targets(
     return targets
 
 
+def collect_template_targets(
+    *,
+    root: Optional[str],
+    repo: bool,
+    personal: bool,
+    payload_skill_dir: Path,
+) -> list[TemplateUpdateTarget]:
+    workspace_root = pick_workspace_root(root)
+    explicit_scope = repo or personal
+    
+    scopes: list[tuple[str, Path]] = []
+    if repo or (not explicit_scope and workspace_root is not None):
+        if workspace_root is not None:
+            scopes.append(("repo", workspace_root))
+            
+    if personal or not explicit_scope:
+        scopes.append(("personal", Path.home()))
+        
+    targets: list[TemplateUpdateTarget] = []
+    
+    for scope, template_root in scopes:
+        active_ids = get_active_platforms_for_template_root(template_root, payload_skill_dir)
+        if not active_ids:
+            continue
+            
+        for platform_id in active_ids:
+            templates_dir = payload_skill_dir / "platforms" / platform_id / "templates"
+            
+            has_update = False
+            has_old_files = False
+            
+            adaptor_path = payload_skill_dir / "platforms" / platform_id / "adaptor.md"
+            if adaptor_path.exists():
+                try:
+                    from .parsers.adaptor import parse_adaptor_md_string
+                    data = parse_adaptor_md_string(adaptor_path.read_text(encoding="utf-8"))
+                    versioning = data.constants.get("AGENT_VERSIONING")
+                    if isinstance(versioning, dict) and isinstance(versioning.get("templates"), list):
+                        for tpl in versioning["templates"]:
+                            path_pat = tpl.get("path")
+                            current_pat = tpl.get("current_path") or tpl.get("currentPath")
+                            if not path_pat or not current_pat:
+                                continue
+                                
+                            if str(path_pat).startswith("templates/"):
+                                path_pat = path_pat[10:]
+                            if str(current_pat).startswith("templates/"):
+                                current_pat = current_pat[10:]
+                                
+                            dir_name = str(Path(path_pat).parent).replace("\\", "/")
+                            if dir_name == ".":
+                                dir_name = ""
+                            
+                            file_name_pattern = Path(path_pat).name
+                            current_file_name = Path(current_pat).name
+                            
+                            regex_str = file_name_pattern.replace(".", "\\.")
+                            regex_str = re.sub(r"\{[a-z]+\}", r"\\d+", regex_str)
+                            regex = re.compile(f"^{regex_str}$")
+                            
+                            target_dir = template_root / dir_name if dir_name else template_root
+                            if target_dir.is_dir():
+                                for f in target_dir.iterdir():
+                                    if not f.is_file():
+                                        continue
+                                    if f.name in LEGACY_AGENT_NAMES or (regex.match(f.name) and f.name != current_file_name):
+                                        has_old_files = True
+                                        break
+                                        
+                            if not (template_root / current_pat).exists():
+                                has_update = True
+                                
+                except Exception:
+                    pass
+            
+            if not has_update and templates_dir.is_dir():
+                try:
+                    all_files = list_files_recursive(templates_dir)
+                    for src in all_files:
+                        rel_path = src.relative_to(templates_dir)
+                        if not (template_root / rel_path).exists():
+                            has_update = True
+                            break
+                except Exception:
+                    pass
+            
+            targets.append(TemplateUpdateTarget(
+                scope=scope,
+                platform_id=platform_id,
+                template_root=template_root,
+                templates_dir=templates_dir,
+                status="update-available" if (has_update or has_old_files) else "up-to-date",
+                removed=[],
+                copied=[],
+            ))
+            
+    return targets
+
+
 def apply_skill_updates(
     targets: list[SkillUpdateTarget], payload_skill_dir: Path, *, force: bool
 ) -> list[SkillUpdateTarget]:
@@ -243,6 +357,48 @@ def apply_skill_updates(
         )
 
     return updated_targets
+
+
+def apply_template_updates(
+    targets: list[TemplateUpdateTarget],
+    payload_skill_dir: Path,
+    *,
+    force: bool,
+) -> list[TemplateUpdateTarget]:
+    applied: list[TemplateUpdateTarget] = []
+    
+    for target in targets:
+        if target.status == "up-to-date" and not force:
+            applied.append(target)
+            continue
+            
+        removed = clean_old_platform_templates(target.template_root, target.platform_id, payload_skill_dir)
+            
+        def filter_fn(rel_path: str, s=target.scope) -> bool:
+            if s == "personal" and rel_path.startswith(".github"):
+                return False
+            return True
+            
+        copied = []
+        if target.templates_dir.is_dir():
+            copied = copy_template_tree(
+                target.templates_dir,
+                target.template_root,
+                force=True,
+                filter_fn=filter_fn,
+            )
+        
+        applied.append(TemplateUpdateTarget(
+            scope=target.scope,
+            platform_id=target.platform_id,
+            template_root=target.template_root,
+            templates_dir=target.templates_dir,
+            status="updated",
+            removed=removed,
+            copied=copied,
+        ))
+        
+    return applied
 
 
 def build_forwarded_args(

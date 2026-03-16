@@ -17,6 +17,7 @@ import {
   pickWorkspaceRoot,
   replaceDirWithCopy,
   resolvePayloadSkillDir,
+  cleanOldPlatformTemplates,
 } from '../core.js';
 import {
   detectAdapters,
@@ -500,6 +501,11 @@ export async function runInit(options: InitCliOptions): Promise<void> {
       if (installScope === 'personal' && relPath.startsWith('.github')) return false;
       return true;
     };
+
+    const removed = await cleanOldPlatformTemplates(t.templateRoot, t.platformId, payloadSkillDir);
+    if (removed.length > 0) {
+      console.log(`Cleaned up ${removed.length} old template file(s) for ${t.platformId}`);
+    }
 
     const copied = await copyTemplateTree(t.templatesDir, t.templateRoot, {
       force: options.force,

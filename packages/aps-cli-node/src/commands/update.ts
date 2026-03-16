@@ -3,19 +3,27 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs/promises';
 
 import { confirm } from '@inquirer/prompts';
 
 import {
   defaultPersonalSkillPath,
   defaultProjectSkillPath,
+  homeDir,
   isDirectory,
   listFilesRecursive,
   pathExists,
   pickWorkspaceRoot,
   replaceDirWithCopy,
   resolvePayloadSkillDir,
+  getActivePlatformsForTemplateRoot,
+  cleanOldPlatformTemplates,
+  copyTemplateTree,
+  LEGACY_AGENT_NAMES,
+  toPosixPath
 } from '../core.js';
+import { parseAdaptorMdString } from '../parsers/adaptor.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json') as { version: string };
@@ -46,6 +54,16 @@ export interface SkillUpdateTarget {
   installedVersion: string | null;
   desiredVersion: string;
   status: SkillUpdateStatus;
+}
+
+export interface TemplateUpdateTarget {
+  scope: string;
+  platformId: string;
+  templateRoot: string;
+  templatesDir: string;
+  status: SkillUpdateStatus;
+  removed: string[];
+  copied: string[];
 }
 
 interface PackageUpdateStatus {
@@ -112,7 +130,6 @@ async function readSkillMdVersion(skillDir: string): Promise<string | null> {
   if (!(await pathExists(skillMd))) return null;
 
   try {
-    const fs = await import('node:fs/promises');
     const text = await fs.readFile(skillMd, 'utf-8');
     return readFrameworkRevision(text);
   } catch {
@@ -154,7 +171,6 @@ export async function inferInstalledSkillVersion(skillDir: string): Promise<stri
   if (!(await isDirectory(platformsDir))) return null;
 
   try {
-    const fs = await import('node:fs/promises');
     const files = await listFilesRecursive(platformsDir);
 
     for (const filePath of files) {
@@ -259,6 +275,108 @@ export async function collectSkillTargets(options: {
   return results;
 }
 
+export async function collectTemplateTargets(
+  options: {
+    root?: string | undefined;
+    repo?: boolean | undefined;
+    personal?: boolean | undefined;
+    payloadSkillDir: string;
+  }
+): Promise<TemplateUpdateTarget[]> {
+  const workspaceRoot = await pickWorkspaceRoot(options.root);
+  const explicitScope = Boolean(options.repo || options.personal);
+  
+  const scopes: Array<{ scope: string; root: string }> = [];
+  
+  if (options.repo || (!explicitScope && workspaceRoot)) {
+    if (workspaceRoot) scopes.push({ scope: 'repo', root: workspaceRoot });
+  }
+  
+  if (options.personal || !explicitScope) {
+    const home = homeDir();
+    if (home) scopes.push({ scope: 'personal', root: home });
+  }
+  
+  const targets: TemplateUpdateTarget[] = [];
+  
+  for (const { scope, root } of scopes) {
+    const activePlatformIds = await getActivePlatformsForTemplateRoot(root, options.payloadSkillDir);
+    if (activePlatformIds.length === 0) continue;
+    
+    for (const platformId of activePlatformIds) {
+      const templatesDir = path.join(options.payloadSkillDir, 'platforms', platformId, 'templates');
+      
+      let hasUpdate = false;
+      let hasOldFiles = false;
+      
+      const adaptorPath = path.join(options.payloadSkillDir, 'platforms', platformId, 'adaptor.md');
+      try {
+        const raw = await fs.readFile(adaptorPath, 'utf8');
+        const data = parseAdaptorMdString(raw);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const versioning = data.constants['AGENT_VERSIONING'] as any;
+        if (versioning && Array.isArray(versioning.templates)) {
+          for (const tmpl of versioning.templates) {
+            let pathPattern = tmpl.path as string;
+            let currentPath = (tmpl.current_path || tmpl.currentPath) as string;
+            if (!pathPattern || !currentPath) continue;
+
+            if (pathPattern.startsWith('templates/')) pathPattern = pathPattern.slice(10);
+            if (currentPath.startsWith('templates/')) currentPath = currentPath.slice(10);
+
+            const dirName = path.dirname(pathPattern);
+            const fileNamePattern = path.basename(pathPattern);
+            const currentFileName = path.basename(currentPath);
+
+            let regexStr = fileNamePattern.replace(/\./g, '\\.');
+            regexStr = regexStr.replace(/\{[a-z]+\}/g, '\\d+');
+            const regex = new RegExp(`^${regexStr}$`);
+
+            const targetDir = path.join(root, dirName);
+            if (await pathExists(targetDir)) {
+              const entries = await fs.readdir(targetDir, { withFileTypes: true });
+              for (const entry of entries) {
+                if (!entry.isFile()) continue;
+                if (LEGACY_AGENT_NAMES.includes(entry.name) || (regex.test(entry.name) && entry.name !== currentFileName)) {
+                  hasOldFiles = true;
+                }
+              }
+            }
+            if (!(await pathExists(path.join(root, currentPath)))) {
+              hasUpdate = true;
+            }
+          }
+        }
+      } catch {}
+      
+      if (!hasUpdate && await isDirectory(templatesDir)) {
+        try {
+          const allFiles = await listFilesRecursive(templatesDir);
+          for (const src of allFiles) {
+            const relPath = toPosixPath(path.relative(templatesDir, src));
+            if (!(await pathExists(path.join(root, relPath)))) {
+               hasUpdate = true;
+               break;
+            }
+          }
+        } catch {}
+      }
+      
+      targets.push({
+        scope,
+        platformId,
+        templateRoot: root,
+        templatesDir,
+        status: (hasUpdate || hasOldFiles) ? 'update-available' : 'up-to-date',
+        removed: [],
+        copied: [],
+      });
+    }
+  }
+  
+  return targets;
+}
+
 function buildForwardedArgs(options: UpdateCliOptions): string[] {
   const args = ['update'];
   if (options.root) args.push('--root', options.root);
@@ -349,7 +467,45 @@ async function applySkillUpdates(
   return updatedTargets;
 }
 
-function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpdateTarget[], options: UpdateCliOptions): void {
+export async function applyTemplateUpdates(
+  targets: TemplateUpdateTarget[],
+  payloadSkillDir: string,
+  options: { force: boolean }
+): Promise<TemplateUpdateTarget[]> {
+  const updated: TemplateUpdateTarget[] = [];
+
+  for (const target of targets) {
+    if (target.status === 'up-to-date' && !options.force) {
+      updated.push(target);
+      continue;
+    }
+
+    const removed = await cleanOldPlatformTemplates(target.templateRoot, target.platformId, payloadSkillDir);
+    
+    const filter = (relPath: string): boolean => {
+      if (target.scope === 'personal' && relPath.startsWith('.github')) return false;
+      return true;
+    };
+
+    let copied: string[] = [];
+    if (await isDirectory(target.templatesDir)) {
+      copied = await copyTemplateTree(target.templatesDir, target.templateRoot, {
+        force: true, // Overwriting during update process
+        filter,
+      });
+    }
+    
+    updated.push({
+      ...target,
+      status: 'updated',
+      removed,
+      copied,
+    });
+  }
+  return updated;
+}
+
+function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpdateTarget[], templateTargets: TemplateUpdateTarget[], options: UpdateCliOptions): void {
   console.log('APS Update');
   console.log('----------');
   console.log(`CLI package: ${packageStatus.packageName}`);
@@ -378,12 +534,27 @@ function renderTextReport(packageStatus: PackageUpdateStatus, targets: SkillUpda
 
   if (targets.length === 0) {
     console.log('- (none found)');
-    return;
+  } else {
+    for (const target of targets) {
+      const versionInfo = target.installedVersion ? `${target.installedVersion} -> ${target.desiredVersion}` : `target ${target.desiredVersion}`;
+      console.log(`- ${target.scope}: ${fmtPath(target.path)} [${target.status}] (${versionInfo})`);
+    }
   }
 
-  for (const target of targets) {
-    const versionInfo = target.installedVersion ? `${target.installedVersion} -> ${target.desiredVersion}` : `target ${target.desiredVersion}`;
-    console.log(`- ${target.scope}: ${fmtPath(target.path)} [${target.status}] (${versionInfo})`);
+  if (templateTargets && templateTargets.length > 0) {
+    console.log('');
+    console.log(options.check || options.dryRun ? 'Platform template updates:' : 'Platform template results:');
+    for (const target of templateTargets) {
+      const summary = target.status === 'updated' 
+        ? `(${target.removed.length} old removed, ${target.copied.length} new written)`
+        : `(${target.status})`;
+      console.log(`- ${target.scope} templates (${target.platformId}): ${fmtPath(target.templateRoot)} ${summary}`);
+    }
+  }
+
+  if (!targets.length && (!templateTargets || !templateTargets.length) && !options.check && !options.dryRun) {
+    console.log('');
+    console.log('Nothing to update. Run `aps init` first to install APS.');
   }
 }
 
@@ -441,23 +612,30 @@ export async function runUpdate(options: UpdateCliOptions): Promise<void> {
     desiredVersion: payloadVersion,
   });
 
+  const plannedTemplates = await collectTemplateTargets({
+    root: options.root,
+    repo: options.repo,
+    personal: options.personal,
+    payloadSkillDir,
+  });
+
   const targets = options.check || options.dryRun
     ? plannedTargets
     : await applySkillUpdates(plannedTargets, payloadSkillDir, { force: options.force });
+
+  const templates = options.check || options.dryRun
+    ? plannedTemplates
+    : await applyTemplateUpdates(plannedTemplates, payloadSkillDir, { force: options.force });
 
   if (options.json) {
     console.log(JSON.stringify({
       package: packageStatus,
       installations: targets,
+      templates,
       mode: options.check ? 'check' : options.dryRun ? 'dry-run' : 'apply',
     }, null, 2));
     return;
   }
 
-  renderTextReport(packageStatus, targets, options);
-
-  if (!targets.length && !options.check && !options.dryRun) {
-    console.log('');
-    console.log('Nothing to update. Run `aps init` first to install APS.');
-  }
+  renderTextReport(packageStatus, targets, templates, options);
 }
