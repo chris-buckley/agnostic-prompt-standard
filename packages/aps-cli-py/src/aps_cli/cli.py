@@ -704,14 +704,24 @@ def _render_update_report(
     if not targets and not template_targets:
         console.print("- (none found)")
     elif targets:
+        status_labels = {
+            "updated": "Refreshed",
+            "up-to-date": "Up to date",
+            "update-available": "Update available",
+            "missing": "Not found",
+            "orphaned": "Orphaned",
+        }
+
         for target in targets:
-            version_info = (
-                f"{target.installed_version} -> {target.desired_version}"
-                if target.installed_version
-                else f"target {target.desired_version}"
-            )
+            label = status_labels.get(target.status, target.status)
+            if not target.installed_version:
+                version_info = f"target {target.desired_version}"
+            elif target.installed_version == target.desired_version:
+                version_info = f"reinstalled v{target.desired_version}"
+            else:
+                version_info = f"{target.installed_version} -> {target.desired_version}"
             console.print(
-                f"- {target.scope}: {_fmt_path(target.path)} [{target.status}] ({version_info})",
+                f"- {target.scope}: {label} {_fmt_path(target.path)} ({version_info})",
                 markup=False,
             )
 
@@ -719,15 +729,22 @@ def _render_update_report(
         console.print("")
         console.print("Platform template updates:" if (check or dry_run) else "Platform template results:")
         for target in template_targets:
-            summary = (
-                f"({len(target.removed)} old removed, {len(target.copied)} new written)"
-                if target.status == "updated"
-                else f"({target.status})"
-            )
-            console.print(
-                f"- {target.scope} templates ({target.platform_id}): {_fmt_path(target.template_root)} {summary}",
-                markup=False,
-            )
+            if target.status == "updated" and (target.removed or target.copied):
+                console.print(f"  {target.platform_id} ({target.scope}):", markup=False)
+                if target.removed:
+                    console.print(f"    Removed {len(target.removed)} old file(s):")
+                    for file in target.removed:
+                        console.print(f"      - {file}", markup=False)
+                if target.copied:
+                    console.print(f"    Added {len(target.copied)} new file(s):")
+                    for file in target.copied:
+                        console.print(f"      - {file}", markup=False)
+            else:
+                status_label = "up to date" if target.status == "up-to-date" else target.status
+                console.print(
+                    f"  - {target.platform_id} ({target.scope}): {status_label}",
+                    markup=False,
+                )
 
 
 @app.command()
