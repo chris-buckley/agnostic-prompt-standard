@@ -23,9 +23,19 @@ platforms/
     adaptor.md                    # single source of truth
     templates/                    # optional installable agent files
       .claude/agents/             # (claude-code) or
-      .github/agents/             # (vscode-copilot)
+      .github/agents/             # (vscode-copilot, copilot-cli)
       # no templates/             # (generic / external tools)
 ```
+
+Currently shipped adapters:
+
+- `claude-code/` — Claude Code CLI (`.claude/agents/`, `~/.claude/`)
+- `vscode-copilot/` — GitHub Copilot in VS Code (`.github/agents/`, `~/.copilot/`)
+- `copilot-cli/` — Standalone GitHub Copilot CLI (`copilot` binary; `.github/agents/`, `~/.copilot/`)
+- `opencode/` — OpenCode runtime (`.opencode/agents/`, primary/subagent modes)
+- `generic/` — Tool-agnostic fallback for external tools and CI bots
+
+The `vscode-copilot` and `copilot-cli` adapters share the same install directories (`.github/`, `~/.copilot/`) by design — Copilot CLI was named `~/.copilot/` to be the canonical Copilot home — but expose different tool grammars, permission models, and orchestration surfaces. Pick the adapter that matches the **host process** (editor extension vs standalone CLI) you are running in.
 
 The `adaptor.md` file contains three APS sections:
 

@@ -67,6 +67,12 @@ For Claude Code platform path (`.claude/skills`):
 npx @agnostic-prompt/aps init --platform claude-code
 ```
 
+For the standalone GitHub Copilot CLI (`.github/skills`, `~/.copilot/`):
+
+```bash
+npx @agnostic-prompt/aps init --platform copilot-cli
+```
+
 Validate your installation:
 
 ```bash
@@ -102,7 +108,7 @@ APS separates concerns into three layers:
 |-------|------|---------|
 | Specification | `references/` | Normative rules (structure, vocabulary, grammar, error taxonomy) |
 | Assets | `assets/` | Reusable templates and example components |
-| Platforms | `platforms/` | Adapters for specific hosts (VS Code Copilot, Claude Code, OpenCode) |
+| Platforms | `platforms/` | Adapters for specific hosts (VS Code Copilot, GitHub Copilot CLI, Claude Code, OpenCode) |
 
 The core abstraction is a structured envelope with seven ordered sections, from static instructions through executable processes to dynamic input.
 
@@ -116,7 +122,10 @@ skill/agnostic-prompt-standard/
 │   └── formats/            # Output format templates (tables, outlines, etc.)
 ├── platforms/
 │   ├── vscode-copilot/     # VS Code / Copilot adapter
+│   ├── copilot-cli/        # Standalone GitHub Copilot CLI adapter
 │   ├── claude-code/        # Claude Code adapter
+│   ├── opencode/           # OpenCode runtime adapter
+│   ├── generic/            # Tool-agnostic fallback
 │   ├── _schemas/           # JSON Schemas for validation
 │   └── _template/          # Starter template for new adapters
 ├── references/

@@ -232,7 +232,13 @@ def test_compute_skill_destinations_empty_defaults_to_non_claude(tmp_path: Path)
 
 def test_default_adapter_order():
     """Test that DEFAULT_ADAPTER_ORDER contains known adapters."""
-    assert DEFAULT_ADAPTER_ORDER == ("vscode-copilot", "claude-code", "opencode", "generic")
+    assert DEFAULT_ADAPTER_ORDER == (
+        "vscode-copilot",
+        "copilot-cli",
+        "claude-code",
+        "opencode",
+        "generic",
+    )
 
 
 def test_sort_platforms_for_ui():

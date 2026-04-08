@@ -13,9 +13,15 @@ from .parsers.adaptor import parse_adaptor_md, get_string, get_string_array
 
 SKILL_ID = "agnostic-prompt-standard"
 
-DEFAULT_ADAPTER_ORDER: tuple[str, ...] = ("vscode-copilot", "claude-code", "opencode", "generic")
+DEFAULT_ADAPTER_ORDER: tuple[str, ...] = (
+    "vscode-copilot",
+    "copilot-cli",
+    "claude-code",
+    "opencode",
+    "generic",
+)
 
-KnownAdapterId = Literal["vscode-copilot", "claude-code", "opencode", "generic"]
+KnownAdapterId = Literal["vscode-copilot", "copilot-cli", "claude-code", "opencode", "generic"]
 
 LEGACY_AGENT_NAMES = [
     "aps-prompt-protocol.agent.md",
