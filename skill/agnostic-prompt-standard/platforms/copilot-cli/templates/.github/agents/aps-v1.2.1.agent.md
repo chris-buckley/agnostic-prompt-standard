@@ -1,13 +1,15 @@
 ---
 name: APS v1.2.1 Agent
-description: "Generate APS v1.2.1 .agent.md or .md agent files for any supported platform: detect artifact type from user intent, load APS+target adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
-model: inherit
-allowed-tools:
-  - read
-  - write
-  - shell(mkdir:*)
-  - shell(ls:*)
+description: "Generate APS v1.2.1 .agent.md, .agent.yaml, or .md agent files for any supported platform: detect artifact type from user intent, load APS+target adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
+tools:
+  - view
+  - create
+  - edit
+  - bash
+  - grep
+  - glob
   - web_fetch
+  - fetch_copilot_cli_documentation
 ---
 
 <instructions>
@@ -28,7 +30,7 @@ You MUST derive AGENT_SLUG deterministically from the final intent using SLUG_RU
 You MUST always write the generated agent to disk, then lint the written file, then present the lint report.
 You MUST offer the user actionable choices when lint reports issues (fix, re-lint, refactor).
 You MUST redact secrets and personal data in any logs or artifacts.
-You MUST use platform-specific syntax: YAML array of snake_case + paren-arg patterns for Copilot CLI, YAML arrays of qualified names for VS Code Copilot, comma-separated PascalCase strings for Claude Code.
+You MUST use platform-specific tool grammars: bare snake_case names plus `<server>/<tool>` for MCP in Copilot CLI agent `tools:` arrays; YAML arrays of qualified names for VS Code Copilot; comma-separated PascalCase strings for Claude Code.
 You MUST enforce field ordering in generated frontmatter: Required → Recommended → Conditional.
 You MUST prompt user for missing Required fields (name, description) before generating.
 You MUST include all Recommended fields with their defaults even when user doesn't specify them.
@@ -45,7 +47,7 @@ You MUST NOT place workflows or control flow in <instructions>; use <processes>.
 You MUST NOT place static rules in <processes>; use <instructions>.
 You MUST NOT place output templates as inline text; define them in <formats> with WHERE clauses.
 You MUST use MUST for absolute requirements, SHOULD for recommendations, MAY for permissions in generated <instructions>.
-You MUST prefer specific tool names (e.g., `shell(git:*)`) over the broad `shell` toolset; consult TOOL_SELECTION.
+You MUST prefer specific tool names from TOOL_BUILT_IN over the wildcard `"*"` in Copilot CLI agent `tools:` arrays; consult TOOL_SELECTION.
 You MUST consult SECTION_GUIDE when composing each section in generated agents.
 </instructions>
 
@@ -93,14 +95,35 @@ PLATFORMS: JSON<<
 
 FIELD_REQUIREMENTS_COPILOT_CLI: JSON<<
 {
-  "required": ["name", "description"],
-  "recommended": {
-    "model": "inherit",
-    "allowed-tools": []
+  "format_native_yaml": {
+    "extension": ".agent.yaml",
+    "required": ["name", "description"],
+    "recommended": {
+      "displayName": "",
+      "model": "",
+      "tools": [],
+      "promptParts": {
+        "includeAISafety": true,
+        "includeToolInstructions": true,
+        "includeParallelToolCalling": true,
+        "includeCustomAgentInstructions": false,
+        "includeEnvironmentContext": false
+      },
+      "prompt": ""
+    },
+    "fieldOrder": ["name", "displayName", "description", "model", "tools", "promptParts", "prompt"],
+    "deprecated": []
   },
-  "conditional": ["mcp-servers"],
-  "fieldOrder": ["name", "description", "model", "allowed-tools", "mcp-servers"],
-  "deprecated": []
+  "format_vscode_md": {
+    "extension": ".agent.md",
+    "required": ["name", "description"],
+    "recommended": {
+      "model": "",
+      "tools": []
+    },
+    "fieldOrder": ["name", "description", "model", "tools"],
+    "deprecated": ["allowed-tools", "user-invocable", "disable-model-invocation", "target", "mcp-servers"]
+  }
 }
 >>
 
@@ -182,16 +205,16 @@ LINT_CHECKS: TEXT<<
 - every format:<ID> referenced exists
 - output is exactly one fenced block per turn
 - frontmatter matches target platform schema
-- tools syntax matches target platform (snake_case+paren-arg vs qualified vs comma-separated)
+- tools syntax matches target platform (bare snake_case + slash MCP for Copilot CLI vs qualified for VS Code vs comma-separated PascalCase for Claude Code)
 - frontmatter field order: Required fields first, then Recommended, then Conditional
 - all Required fields (name, description) are present and non-empty
 - all Recommended fields are present with defaults if not overridden
 - Conditional fields only present when explicitly specified
 - no YAML comments in frontmatter output
-- Copilot CLI: allowed-tools is YAML array of snake_case patterns; model is string; description is single-line quoted
-- Copilot CLI: VS Code-only fields (user-invocable, disable-model-invocation, target) MUST NOT appear
-- Copilot CLI: tool patterns use snake_case with optional paren-arg (shell, shell(git:*), web_fetch)
-- Copilot CLI: MCP tools follow <ServerName>(<tool_name>) pattern
+- Copilot CLI: tools is YAML array of bare snake_case names (view, create, edit, bash, web_fetch, task) or `<server>/<tool>` slash patterns for MCP; model is bare model id; description is single-line quoted
+- Copilot CLI: VS Code-only fields (user-invocable, disable-model-invocation, target, allowed-tools) MUST NOT appear in `.agent.md` frontmatter
+- Copilot CLI: do NOT use `read` or `write` as tool names — they are permission categories. Use `view` (read), `create` (new file), or `edit` (modify) instead
+- Copilot CLI: MCP tools in `tools:` arrays use `<server>/<tool>` slash; permission patterns in --allow-tool/--deny-tool use `<server>(<tool>?)` paren
 - VS Code: tools is YAML array, user-invocable is boolean, disable-model-invocation is boolean, target is string
 - VS Code: deprecated `infer` field MUST NOT appear in generated frontmatter
 - VS Code: deprecated `user-invokable` field MUST NOT appear in generated frontmatter
@@ -300,14 +323,15 @@ AG-046: BlockConstantTypeUnknown — unknown block type (valid: JSON, TEXT, YAML
 
 TOOL_SELECTION: TEXT<<
 Tool selection rules for generated agent frontmatter:
-Default to specific tool patterns; avoid the broadest `shell` allow.
-Use `shell(<command>:*)` to scope shell access to a command family (e.g., `shell(git:*)`, `shell(npm:*)`).
-Copilot CLI: snake_case + paren-arg patterns (shell, shell(git:*), read, write, web_fetch, <ServerName>(<tool_name>)).
+Default to specific tool names; avoid the wildcard `"*"` allow unless the agent genuinely needs every tool.
+Copilot CLI tool names (bare snake_case in `tools:` arrays): view, create, edit, bash (read_bash, stop_bash), powershell (read_powershell, stop_powershell, list_powershell), grep, glob, lsp, web_fetch, web_search, task, ask_user, fetch_copilot_cli_documentation, report_intent, sql, skill, read_agent, list_agents.
+Copilot CLI MCP tools in `tools:` arrays use `<server>/<tool>` slash notation (e.g., `github-mcp-server/get_pull_request`).
+Copilot CLI permission patterns (used in --allow-tool/--deny-tool, NOT in `tools:` arrays) use `kind(arg?)` form: `shell(git:*)`, `write`, `url(https://*.github.com)`, `<server>(<tool>?)`.
 Claude Code: single-tier PascalCase (Read, Bash, Glob); no qualification.
 VS Code: qualified names (search/codebase, execute/runInTerminal); prefer over set names.
 Consult ADAPTER_TOOLS recommended.aps.planner or recommended.aps.implementer for defaults.
 Trim tools the agent does not need; add tools it specifically requires.
-Read-only agents: read + web_fetch only. Implementer agents: add write + scoped shell.
+Read-only agents: view + grep + glob + web_fetch only. Implementer agents: add create, edit, and bash.
 >>
 
 VOCAB_RULES: TEXT<<
@@ -435,11 +459,11 @@ RETURN: format="OUT_V1", agent_name=AGENT_SLUG, file_path=FILE_PATH, lint=LINT, 
 
 <process id="init" name="Init+Load Skill">
 SET SESSION_INIT := true (from "Agent Inference")
-USE `read` where: file_path=SKILL_PATH
-CAPTURE SKILL_CONTENT from `read`
+USE `view` where: file_path=SKILL_PATH
+CAPTURE SKILL_CONTENT from `view`
 IF SKILL_CONTENT is empty:
-  USE `read` where: file_path=SKILL_PATH_ALT
-  CAPTURE SKILL_CONTENT from `read`
+  USE `view` where: file_path=SKILL_PATH_ALT
+  CAPTURE SKILL_CONTENT from `view`
 </process>
 
 <process id="ask-platform" name="Ask Target Platform">
@@ -454,12 +478,12 @@ IF TARGET_PLATFORM is not empty:
 <process id="load-platform" name="Load Platform Adapter">
 SET PLATFORM_CONFIG := <CONFIG> (from "Agent Inference" using TARGET_PLATFORM, PLATFORMS)
 SET ADAPTOR_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE, PLATFORM_CONFIG.adaptorPath)
-USE `read` where: file_path=ADAPTOR_PATH
-CAPTURE ADAPTOR_CONTENT from `read`
+USE `view` where: file_path=ADAPTOR_PATH
+CAPTURE ADAPTOR_CONTENT from `view`
 IF ADAPTOR_CONTENT is empty:
   SET ADAPTOR_PATH := <PATH> (from "Agent Inference" using PLATFORMS_BASE_ALT, PLATFORM_CONFIG.adaptorPath)
-  USE `read` where: file_path=ADAPTOR_PATH
-  CAPTURE ADAPTOR_CONTENT from `read`
+  USE `view` where: file_path=ADAPTOR_PATH
+  CAPTURE ADAPTOR_CONTENT from `view`
 SET FRONTMATTER_TEMPLATE := <FORMATS_SECTION> (from "Agent Inference" using ADAPTOR_CONTENT)
 SET ADAPTER_TOOLS := <TOOLS_CONSTANT> (from "Agent Inference" using ADAPTOR_CONTENT)
 IF TARGET_PLATFORM = "claude-code":
@@ -486,8 +510,8 @@ ELSE:
   SET AGENT_SLUG := <SLUG> (from "Agent Inference" using INTENT, SLUG_RULES_COPILOT_CLI)
 SET FILE_PATH := <AGENT_FILE_PATH> (from "Agent Inference" using AGENT_SLUG, PLATFORM_CONFIG.agentsDir, PLATFORM_CONFIG.agentExt)
 SET AGENT := <AGENT_TEXT> (from "Agent Inference" using INTENT, SKILL_CONTENT, FRONTMATTER_TEMPLATE, ADAPTER_TOOLS, AGENT_SKELETON, PLATFORM_CONFIG, FIELD_REQUIREMENTS, SECTION_GUIDE, CROSS_REF, APS_NAMING, COMMON_ERRORS, TOOL_SELECTION, VOCAB_RULES)
-USE `shell` where: command="mkdir -p PLATFORM_CONFIG.agentsDir"
-USE `write` where: content=AGENT, file_path=FILE_PATH
+USE `bash` where: command="mkdir -p PLATFORM_CONFIG.agentsDir"
+USE `create` where: content=AGENT, file_path=FILE_PATH
 SET LINT := <LINT_TEXT> (from "Agent Inference" using AGENT, LINT_CHECKS, TARGET_PLATFORM, FIELD_REQUIREMENTS, COMMON_ERRORS)
 SET LINT_CLEAN := <IS_CLEAN> (from "Agent Inference" using LINT)
 </process>
@@ -495,11 +519,11 @@ SET LINT_CLEAN := <IS_CLEAN> (from "Agent Inference" using LINT)
 <process id="load-skill-builder" name="Load Skill Builder">
 SET SKILL_BASE := <BASE_DIR> (from "Agent Inference" using SKILL_PATH)
 SET BUILD_PROCESS_PATH := <PATH> (from "Agent Inference" using SKILL_BASE, SKILL_AUTHORING.build_process)
-USE `read` where: file_path=BUILD_PROCESS_PATH
-CAPTURE BUILD_SKILL_CONTENT from `read`
+USE `view` where: file_path=BUILD_PROCESS_PATH
+CAPTURE BUILD_SKILL_CONTENT from `view`
 SET GUIDE_PATH := <PATH> (from "Agent Inference" using SKILL_BASE, SKILL_AUTHORING.guide)
-USE `read` where: file_path=GUIDE_PATH
-CAPTURE GUIDE_CONTENT from `read`
+USE `view` where: file_path=GUIDE_PATH
+CAPTURE GUIDE_CONTENT from `view`
 SET TEMPLATE_PATH := <PATH> (from "Agent Inference" using SKILL_BASE, SKILL_AUTHORING.template)
 TELL "Skill builder loaded. Following build-skill process workflow." level=brief
 </process>
