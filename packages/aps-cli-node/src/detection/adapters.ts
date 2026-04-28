@@ -11,7 +11,12 @@ import {
 import { parseAdaptorMd } from '../parsers/adaptor.js';
 
 /** Known platform adapter identifiers. */
-export type KnownAdapterId = 'vscode-copilot' | 'claude-code' | 'opencode' | 'generic';
+export type KnownAdapterId =
+  | 'vscode-copilot'
+  | 'copilot-cli'
+  | 'claude-code'
+  | 'opencode'
+  | 'generic';
 
 /**
  * Result of detecting a platform adapter in a workspace.
@@ -34,6 +39,7 @@ export interface Marker {
 /** The default order of platform adapters for detection and display. */
 export const DEFAULT_ADAPTER_ORDER: readonly KnownAdapterId[] = [
   'vscode-copilot',
+  'copilot-cli',
   'claude-code',
   'opencode',
   'generic',
