@@ -1,4 +1,4 @@
-name: Dev Publish
+name: Dev Build
 
 on:
   push:
@@ -7,20 +7,22 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   dev-node:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: packages/aps-cli-node/package-lock.json
       - name: Install and test
         working-directory: packages/aps-cli-node
-        run: npm install && npm test
+        run: npm ci --ignore-scripts && npm test
       - name: Set dev version
         working-directory: packages/aps-cli-node
         run: |
@@ -34,14 +36,11 @@ jobs:
         with:
           name: npm-package
           path: packages/aps-cli-node/*.tgz
-      - name: Publish to npm (dev tag)
-        working-directory: packages/aps-cli-node
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --tag dev --provenance
 
   dev-python:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,8 +69,3 @@ jobs:
         with:
           name: python-package
           path: dist/*
-      - name: Publish to PyPI (dev)
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages-dir: dist
