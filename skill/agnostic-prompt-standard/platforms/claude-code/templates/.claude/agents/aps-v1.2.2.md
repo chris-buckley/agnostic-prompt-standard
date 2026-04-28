@@ -1,6 +1,6 @@
 ---
-name: aps-v1-2-1
-description: "Generate APS v1.2.1 agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
+name: aps-v1-2-2
+description: "Generate APS v1.2.2 agent files for any platform: load APS skill + target platform adapter, extract intent, then generate+write+lint. Author: Christopher Buckley. Co-authors: Juan Burckhardt, Anastasiya Smirnova. URL: https://github.com/chris-buckley/agnostic-prompt-standard"
 model: inherit
 tools: Read, Write, Glob, Grep, Bash, TodoWrite
 disallowedTools: Edit, MultiEdit

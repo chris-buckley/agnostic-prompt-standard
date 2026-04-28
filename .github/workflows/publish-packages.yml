@@ -7,79 +7,92 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  publish-node:
+  verify:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: python tools/check_versions.py --tag "${GITHUB_REF_NAME}"
+      - run: python tools/check_skill_links.py
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+  publish-node:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
         with:
-          node-version: '22'
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
           cache-dependency-path: packages/aps-cli-node/package-lock.json
-
-      - name: Verify tagged version
-        run: python tools/check_versions.py --tag "${GITHUB_REF_NAME}"
-
-      - name: Sync Node payload
-        run: python tools/sync_payload.py --node
-
-      - name: Install Node CLI dependencies
-        run: npm ci --prefix packages/aps-cli-node --ignore-scripts
-
-      - name: Run Node CLI tests
-        run: npm test --prefix packages/aps-cli-node
-
-      - name: Publish Node package to npm
+      - run: python tools/sync_payload.py --node
+      - run: npm ci --prefix packages/aps-cli-node --ignore-scripts
+      - run: npm test --prefix packages/aps-cli-node
+      - name: Publish to npm via OIDC
         working-directory: packages/aps-cli-node
         run: npm publish --access public --provenance
 
   publish-python:
+    needs: verify
     runs-on: ubuntu-latest
-
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Verify tagged version
-        run: python tools/check_versions.py --tag "${GITHUB_REF_NAME}"
-
-      - name: Sync Python payload
-        run: python tools/sync_payload.py --python
-
-      - name: Install Python build + test dependencies
-        run: |
+      - run: python tools/sync_payload.py --python
+      - run: |
           python -m pip install --upgrade pip build
           python -m pip install -e "packages/aps-cli-py[dev]"
-
-      - name: Run Python CLI tests
-        run: python -m pytest -q packages/aps-cli-py/tests
-
-      - name: Build Python distributions
-        run: python -m build packages/aps-cli-py
-
-      - name: Publish Python package to PyPI
+      - run: python -m pytest -q packages/aps-cli-py/tests
+      - run: python -m build --outdir packages/aps-cli-py/dist packages/aps-cli-py
+      - name: Publish to PyPI via OIDC
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/aps-cli-py/dist
+
+  github-release:
+    needs: [publish-node, publish-python]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create skill zip
+        run: |
+          mkdir -p dist
+          cd skill
+          zip -r "../dist/agnostic-prompt-standard-skill-${GITHUB_REF_NAME}.zip" agnostic-prompt-standard
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/agnostic-prompt-standard-skill-${{ github.ref_name }}.zip
+          generate_release_notes: true
